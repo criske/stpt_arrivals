@@ -3,9 +3,10 @@ import 'package:http/http.dart';
 import 'package:http/http.dart' as http;
 import 'package:mockito/mockito.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
+import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
+import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/remote_config.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
-import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
 
 void main() {
   RouteArrivalFetcher fetcher;
@@ -46,11 +47,15 @@ void main() {
         "http://86.125.113.218:61978/html/timpi/trasee.php?param1=886");
   });
 
-  test("e2e test", () async{
-      final route = await RouteArrivalFetcher(RouteArrivalParserImpl(), RemoteConfigImpl(), Client())
-                    .getRouteArrivals(886);
-      expect(2, 1+1);
-      print(route);
+  test("e2e test", () async {
+    final route = await RouteArrivalFetcher(
+            RouteArrivalParserImpl(
+                ArrivalTimeConverterImpl()),
+            RemoteConfigImpl(),
+            Client())
+        .getRouteArrivals(886);
+    expect(2, 1 + 1);
+    print(route);
   });
 }
 

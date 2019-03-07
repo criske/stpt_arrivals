@@ -1,8 +1,9 @@
 import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
+import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:test/test.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
-void main() {
 
+void main() {
   const htmlResult = """  
 <!DOCTYPE html>
 <html>
@@ -110,9 +111,9 @@ void main() {
 </html>
   """;
 
-  test("should parse the document", (){
-    final route = RouteArrivalParserImpl().parse(htmlResult);
-    print(route);
+  test("should parse the document", () {
+    final route = RouteArrivalParserImpl(
+        ArrivalTimeConverterImpl()).parse(htmlResult);
+        print(route);
   });
-
 }

@@ -1,12 +1,18 @@
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html;
 import 'package:stpt_arrivals/models/arrival.dart';
+import 'time_converter.dart';
 
 abstract class RouteArrivalParser {
   Route parse(String rawData);
 }
 
 class RouteArrivalParserImpl implements RouteArrivalParser {
+
+  ArrivalTimeConverter _timeConverter;
+
+  RouteArrivalParserImpl(this._timeConverter);
+
   @override
   Route parse(String rawData) {
     final doc = html.parse(rawData);
@@ -31,7 +37,7 @@ class RouteArrivalParserImpl implements RouteArrivalParser {
         wayCount++;
       } else if (!_isHeader(t)) {
         final arrival = Arrival(Station(0, _extractTextFromColumn(t, 0)),
-            _extractTextFromColumn(t, 1));
+            _timeConverter.toAbsoluteTime(_extractTextFromColumn(t, 1)));
         currentWay.arrivals.add(arrival);
       }
     });
@@ -40,10 +46,11 @@ class RouteArrivalParserImpl implements RouteArrivalParser {
 
   bool _isHeader(Element t) => _extractTextFromColumn(t, 1).trim() == "Sosire";
 
-  String _extractTextFromColumn(Element table, int index) => table
-      .getElementsByTagName("td")[index]
-      .getElementsByTagName("b")
-      .first
-      .text
-      .trim();
+  String _extractTextFromColumn(Element table, int index) =>
+      table
+          .getElementsByTagName("td")[index]
+          .getElementsByTagName("b")
+          .first
+          .text
+          .trim();
 }

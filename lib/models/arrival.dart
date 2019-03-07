@@ -1,11 +1,11 @@
 class Arrival {
   final Station station;
 
-  final String time;
+  final int time;
 
-  final String time2;
+  final int time2;
 
-  const Arrival(this.station, this.time, [this.time2 = ""]);
+  const Arrival(this.station, this.time, [this.time2 = 0]);
 }
 
 class Way {
