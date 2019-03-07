@@ -42,7 +42,7 @@ class ArrivalTimeConverterImpl implements ArrivalTimeConverter {
       final minutes = int.parse(split[1]);
       return DateTime
           .utc(now.year, now.month, now.day, hour, minutes)
-          .subtract(Duration(hours: 2)) // compensate for romanian locale
+          .subtract(Duration(hours: 2)) // compensate for romanian time zone relative to utc
           .millisecondsSinceEpoch;
     } else {
       throw FormatException("Illegal format time for $timeStr");

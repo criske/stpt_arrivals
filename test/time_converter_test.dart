@@ -23,9 +23,12 @@ void main() {
   });
 
   test("should get time when '.min' time format is provided", () {
-    final formatted = converter.toReadableTime(
+    var formatted = converter.toReadableTime(
         converter.toAbsoluteTime("6 min."), format.pattern);
     expect(formatted, "2019-03-07 17:06");
+    formatted = converter.toReadableTime(
+        converter.toAbsoluteTime("66 min."), format.pattern);
+    expect(formatted, "2019-03-07 18:06");
   });
 
   test("should get time when '>>' time format is provided", () {

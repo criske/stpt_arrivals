@@ -47,16 +47,16 @@ void main() {
         "http://86.125.113.218:61978/html/timpi/trasee.php?param1=886");
   });
 
-  test("e2e test", () async {
-    final route = await RouteArrivalFetcher(
-            RouteArrivalParserImpl(
-                ArrivalTimeConverterImpl()),
-            RemoteConfigImpl(),
-            Client())
-        .getRouteArrivals(886);
-    expect(2, 1 + 1);
-    print(route);
-  });
+//  test("e2e test", () async {
+//    final route = await RouteArrivalFetcher(
+//            RouteArrivalParserImpl(
+//                ArrivalTimeConverterImpl()),
+//            RemoteConfigImpl(),
+//            Client())
+//        .getRouteArrivals(886);
+//    expect(2, 1 + 1);
+//    print(route);
+//  });
 }
 
 class MockParser extends Mock implements RouteArrivalParser {}
