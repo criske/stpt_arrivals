@@ -11,7 +11,6 @@ abstract class TimeProvider {
 }
 
 class SystemTimeProvider implements TimeProvider {
-
   const SystemTimeProvider();
 
   @override
@@ -26,9 +25,6 @@ class ArrivalTimeConverterImpl implements ArrivalTimeConverter {
   @override
   int toAbsoluteTime(String timeStr) {
     final now = DateTime.fromMillisecondsSinceEpoch(_provider.time());
-    if (timeStr.contains("*")) {
-      throw FormatException("Illegal format time for $timeStr");
-    }
     if (timeStr == ">>") {
       return now.millisecondsSinceEpoch;
     } else if (timeStr.endsWith("min.")) {
@@ -38,14 +34,19 @@ class ArrivalTimeConverterImpl implements ArrivalTimeConverter {
     } else if (timeStr.contains(":")) {
       final split = timeStr.split(":");
       assert(split.length == 2);
-      final hour = int.parse(split[0]);
-      final minutes = int.parse(split[1]);
-      return DateTime
-          .utc(now.year, now.month, now.day, hour, minutes)
-          .subtract(Duration(hours: 2)) // compensate for romanian time zone relative to utc
-          .millisecondsSinceEpoch;
+      try {
+        final hour = int.parse(split[0]);
+        final minutes = int.parse(split[1]);
+        return DateTime
+            .utc(now.year, now.month, now.day, hour, minutes)
+            .subtract(Duration(
+                hours: 2)) // compensate for romanian time zone relative to utc
+            .millisecondsSinceEpoch;
+      } catch (_) {
+        return 0;
+      }
     } else {
-      throw FormatException("Illegal format time for $timeStr");
+      return 0;
     }
   }
 

@@ -37,17 +37,10 @@ void main() {
     expect(formatted, "2019-03-07 17:00");
   });
 
-  test("should throw when '*' or unkown time format is provided", () {
-     try{
-       converter.toAbsoluteTime("*");
-       fail("Should fail");
-     }catch(e){}
-     try{
-       converter.toAbsoluteTime("foo");
-       fail("Should fail");
-     }catch(e){}
+  test("should get 0 when '*' or unkown time format is provided", () {
+    expect(converter.toAbsoluteTime("*"), 0);
+    expect(converter.toAbsoluteTime("foo"), 0);
   });
-
 }
 
 class MockTimeProvider extends Mock implements TimeProvider {}
