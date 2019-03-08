@@ -7,14 +7,20 @@ abstract class ArrivalTimeConverter {
 }
 
 abstract class TimeProvider {
-  int time();
+  int timeMillis();
+
+  DateTime time();
 }
 
 class SystemTimeProvider implements TimeProvider {
   const SystemTimeProvider();
 
   @override
-  int time() => DateTime.now().millisecondsSinceEpoch;
+  int timeMillis() => DateTime.now().millisecondsSinceEpoch;
+
+  @override
+  DateTime time() => DateTime.now();
+
 }
 
 class ArrivalTimeConverterImpl implements ArrivalTimeConverter {
@@ -24,7 +30,7 @@ class ArrivalTimeConverterImpl implements ArrivalTimeConverter {
 
   @override
   int toAbsoluteTime(String timeStr) {
-    final now = DateTime.fromMillisecondsSinceEpoch(_provider.time());
+    final now = _provider.time();
     if (timeStr == ">>") {
       return now.millisecondsSinceEpoch;
     } else if (timeStr.endsWith("min.")) {
@@ -51,6 +57,6 @@ class ArrivalTimeConverterImpl implements ArrivalTimeConverter {
   }
 
   @override
-  String toReadableTime(int timeMillis, [String format]) => DateFormat(format)
+  String toReadableTime(int timeMillis, [String pattern]) => DateFormat(pattern)
       .format(DateTime.fromMillisecondsSinceEpoch(timeMillis));
 }

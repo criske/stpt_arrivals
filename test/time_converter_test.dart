@@ -3,6 +3,8 @@ import 'package:mockito/mockito.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:test/test.dart';
 
+import 'mocks.dart';
+
 void main() {
   TimeProvider provider;
   ArrivalTimeConverter converter;
@@ -13,7 +15,7 @@ void main() {
     provider = MockTimeProvider();
     converter = ArrivalTimeConverterImpl(provider);
     when(provider.time())
-        .thenReturn(format.parse("2019-03-07 17:00").millisecondsSinceEpoch);
+        .thenReturn(format.parse("2019-03-07 17:00"));
   });
 
   test("should get time when ':' time format is provided", () {
@@ -43,4 +45,4 @@ void main() {
   });
 }
 
-class MockTimeProvider extends Mock implements TimeProvider {}
+

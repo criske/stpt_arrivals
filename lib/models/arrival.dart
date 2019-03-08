@@ -26,6 +26,7 @@ class Route {
 
 class Station {
   final int id;
+
   final String name;
 
   const Station(this.id, this.name);
