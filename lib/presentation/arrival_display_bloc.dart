@@ -39,7 +39,8 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
 
   @override
   void cancel() {
-    throw UnsupportedError("Unsuppoted cancel method yet!");
+    actionCancelSubject
+        .add(_Action.cancel(_timeProvider.timeMillis()));
   }
 
   @override
@@ -65,11 +66,10 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
     final loadStream =
         actionLoadSubject.stream.scan(_coolDownScanner, _Action.idle);
     final toggleStream = actionToggleSubject.stream;
-    final cancelStream = actionCancelSubject.stream;
 
     return Observable
-        .merge([loadStream, toggleStream, cancelStream])
-        .flatMap(_streamHandlerByAction)
+        .merge([loadStream, toggleStream])
+        .switchMap(_streamHandlerByAction)
         .scan(_stateReducer, _State.withFlag(StateFlag.IDLE))
         .map(_resultMapper);
   }
@@ -80,6 +80,7 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
     } else if (action is _ActionLoad) {
       return Observable
           .fromFuture(_arrivalFetcher.getRouteArrivals(action.transporterId))
+          .takeUntil(actionCancelSubject.stream)
           .map((route) => _State.withRoute(route))
           .onErrorReturnWith((e) => _State.withError(e))
           .startWith(_State.withFlag(StateFlag.LOADING));
