@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:async/async.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
@@ -70,6 +72,20 @@ void main() {
     bloc.load(100);
     expect(await stream.next, blc.Result.loading);
     final err = (await stream.next) as blc.ResultError;
-    expect("Exception: Boom!",(err.error as ExceptionError).exception.toString());
+    expect(
+        "Exception: Boom!", (err.error as ExceptionError).exception.toString());
+  });
+
+  test("should emit [LOADING, IDLE] when cancel", () async {
+    when(fetcher.getRouteArrivals(100)).thenAnswer((_) async {
+      sleep(Duration(milliseconds: 300));
+      return Route(Way(List(), "Way1"), Way(List(), "Way2"));
+    });
+
+    final stream = StreamQueue(bloc.streamResult);
+    bloc.load(100);
+    bloc.cancel();
+    expect(await stream.next, blc.Result.loading);
+    expect(await stream.next, blc.Result.idle);
   });
 }

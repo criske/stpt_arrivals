@@ -8,6 +8,7 @@ import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 
 abstract class ArrivalDisplayBloc implements DisposableBloc {
+
   final Stream<Result> streamResult;
 
   void load(int transporterId);
@@ -38,21 +39,16 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   BehaviorSubject<_Action> actionToggleSubject = BehaviorSubject<_Action>();
 
   @override
-  void cancel() {
-    actionCancelSubject
-        .add(_Action.cancel(_timeProvider.timeMillis()));
-  }
+  void cancel() =>
+      actionCancelSubject.add(_Action.cancel(_timeProvider.timeMillis()));
 
   @override
-  void load(int transporterId) {
-    actionLoadSubject
-        .add(_Action.load(_timeProvider.timeMillis(), transporterId));
-  }
+  void load(int transporterId) => actionLoadSubject
+      .add(_Action.load(_timeProvider.timeMillis(), transporterId));
 
   @override
-  void toggleWay() {
-    actionToggleSubject.add(_Action.toggleWay(_timeProvider.timeMillis()));
-  }
+  void toggleWay() =>
+      actionToggleSubject.add(_Action.toggleWay(_timeProvider.timeMillis()));
 
   @override
   void dispose() {
@@ -64,26 +60,40 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   @override
   Stream<Result> get streamResult {
     final loadStream =
-        actionLoadSubject.stream.scan(_coolDownScanner, _Action.idle);
+        actionLoadSubject.stream.scan(_coolDownController, _Action.idle);
     final toggleStream = actionToggleSubject.stream;
 
     return Observable
         .merge([loadStream, toggleStream])
-        .switchMap(_streamHandlerByAction)
+        .flatMap(_actionController)
         .scan(_stateReducer, _State.withFlag(StateFlag.IDLE))
-        .map(_resultMapper);
+        .map(_stateToResultMapper);
   }
 
-  Stream<_State> _streamHandlerByAction(action) {
+  _Action _coolDownController(acc, curr, _) {
+    if (acc == null || acc == _Action.idle || curr == _Action.idle) {
+      return curr;
+    } else {
+      final timeDiff = _timeDiff(acc.time, curr.time);
+      if (timeDiff < coolDownThreshold) {
+        return _ActionCoolDown(curr.time, timeDiff.inSeconds);
+      } else {
+        return curr;
+      }
+    }
+  }
+
+  Stream<_State> _actionController(action) {
     if (action is _ActionIdle) {
       return Observable.just(_State.withFlag(StateFlag.IDLE));
     } else if (action is _ActionLoad) {
       return Observable
           .fromFuture(_arrivalFetcher.getRouteArrivals(action.transporterId))
-          .takeUntil(actionCancelSubject.stream)
           .map((route) => _State.withRoute(route))
           .onErrorReturnWith((e) => _State.withError(e))
-          .startWith(_State.withFlag(StateFlag.LOADING));
+          .startWith(_State.withFlag(StateFlag.LOADING))
+          .takeUntil(actionCancelSubject.stream)
+          .doOnCancel(() => actionLoadSubject.add(_Action.idle));
     } else if (action is _ActionCoolDown) {
       return Observable
           .just(_State.withError(CoolDownError(action.remainingSeconds)));
@@ -95,7 +105,7 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
     }
   }
 
-  Result _resultMapper(state) {
+  Result _stateToResultMapper(state) {
     Result result;
     switch (state.flag) {
       case StateFlag.IDLE:
@@ -119,9 +129,9 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
     _State state;
     switch (curr.flag) {
       case StateFlag.FINISHED:
-      case StateFlag.IDLE:
-        state = curr;
+        state = _State(curr.toggleableRoute, curr.flag, null);
         break;
+      case StateFlag.IDLE:
       case StateFlag.LOADING:
         state = _State(acc.toggleableRoute, curr.flag, null);
         break;
@@ -133,19 +143,6 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
         break;
     }
     return state;
-  }
-
-  _Action _coolDownScanner(acc, curr, _) {
-    if (acc == null || acc == _Action.idle) {
-      return curr;
-    } else {
-      final timeDiff = _timeDiff(acc.time, curr.time);
-      if (timeDiff < coolDownThreshold) {
-        return _ActionCoolDown(curr.time, timeDiff.inSeconds);
-      } else {
-        return curr;
-      }
-    }
   }
 
   Duration _timeDiff(int timeMillis1, int timeMillis2) {
