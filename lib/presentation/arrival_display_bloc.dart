@@ -38,7 +38,9 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   BehaviorSubject<_Action> actionToggleSubject = BehaviorSubject<_Action>();
 
   @override
-  void cancel() {}
+  void cancel() {
+    throw UnsupportedError("Unsuppoted cancel method yet!");
+  }
 
   @override
   void load(int transporterId) {
@@ -54,73 +56,85 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   @override
   void dispose() {
     actionLoadSubject.sink.close();
+    actionToggleSubject.sink.close();
+    actionCancelSubject.sink.close();
   }
 
   @override
   Stream<Result> get streamResult {
     final loadStream =
-        actionLoadSubject.stream.scan(coolDownScanner, _Action.idle);
+        actionLoadSubject.stream.scan(_coolDownScanner, _Action.idle);
     final toggleStream = actionToggleSubject.stream;
+    final cancelStream = actionCancelSubject.stream;
 
-    return Observable.merge([loadStream, toggleStream]).flatMap((action) {
-      if (action is _ActionIdle) {
-        return Observable.just(_State.withFlag(StateFlag.IDLE));
-      } else if (action is _ActionLoad) {
-        return Observable
-            .fromFuture(_arrivalFetcher.getRouteArrivals(action.transporterId))
-            .map((route) => _State.withRoute(route))
-            .onErrorReturnWith((e) => _State.withError(e))
-            .startWith(_State.withFlag(StateFlag.LOADING));
-      } else if (action is _ActionCoolDown) {
-        return Observable
-            .just(_State.withError(CoolDownError(action.remainingSeconds)));
-      } else if (action is _ActionToggle) {
-        return Observable.just(_State.withFlag(StateFlag.TOGGLE));
-      } else {
-        return Observable
-            .just(_State.withError(MessageError("Unprocessed action $action")));
-      }
-    }).scan((_State acc, _State curr, _) {
-      _State state;
-      switch (curr.flag) {
-        case StateFlag.FINISHED:
-        case StateFlag.IDLE:
-          state = curr;
-          break;
-        case StateFlag.LOADING:
-          state = _State(acc.toggleableRoute, curr.flag, null);
-          break;
-        case StateFlag.TOGGLE:
-          state =
-              _State(acc.toggleableRoute.toggle(), StateFlag.FINISHED, null);
-          break;
-        case StateFlag.ERROR:
-          state = _State(acc.toggleableRoute, curr.flag, curr.error);
-          break;
-      }
-      return state;
-    }, _State.withFlag(StateFlag.IDLE)).map((state) {
-      Result result;
-      switch (state.flag) {
-        case StateFlag.IDLE:
-          result = Result.idle;
-          break;
-        case StateFlag.LOADING:
-          result = Result.loading;
-          break;
-        case StateFlag.ERROR:
-          result = ResultError(state.error);
-          break;
-        case StateFlag.FINISHED:
-        case StateFlag.TOGGLE:
-          result = Result.display(state.toggleableRoute.getWay());
-          break;
-      }
-      return result;
-    });
+    return Observable
+        .merge([loadStream, toggleStream, cancelStream])
+        .flatMap(_streamHandlerByAction)
+        .scan(_stateReducer, _State.withFlag(StateFlag.IDLE))
+        .map(_resultMapper);
   }
 
-  _Action coolDownScanner(acc, curr, _) {
+  Stream<_State> _streamHandlerByAction(action) {
+    if (action is _ActionIdle) {
+      return Observable.just(_State.withFlag(StateFlag.IDLE));
+    } else if (action is _ActionLoad) {
+      return Observable
+          .fromFuture(_arrivalFetcher.getRouteArrivals(action.transporterId))
+          .map((route) => _State.withRoute(route))
+          .onErrorReturnWith((e) => _State.withError(e))
+          .startWith(_State.withFlag(StateFlag.LOADING));
+    } else if (action is _ActionCoolDown) {
+      return Observable
+          .just(_State.withError(CoolDownError(action.remainingSeconds)));
+    } else if (action is _ActionToggle) {
+      return Observable.just(_State.withFlag(StateFlag.TOGGLE));
+    } else {
+      return Observable
+          .just(_State.withError(MessageError("Unprocessed action $action")));
+    }
+  }
+
+  Result _resultMapper(state) {
+    Result result;
+    switch (state.flag) {
+      case StateFlag.IDLE:
+        result = Result.idle;
+        break;
+      case StateFlag.LOADING:
+        result = Result.loading;
+        break;
+      case StateFlag.ERROR:
+        result = ResultError(state.error);
+        break;
+      case StateFlag.FINISHED:
+      case StateFlag.TOGGLE:
+        result = Result.display(state.toggleableRoute.getWay());
+        break;
+    }
+    return result;
+  }
+
+  _State _stateReducer(_State acc, _State curr, _) {
+    _State state;
+    switch (curr.flag) {
+      case StateFlag.FINISHED:
+      case StateFlag.IDLE:
+        state = curr;
+        break;
+      case StateFlag.LOADING:
+        state = _State(acc.toggleableRoute, curr.flag, null);
+        break;
+      case StateFlag.TOGGLE:
+        state = _State(acc.toggleableRoute.toggle(), StateFlag.FINISHED, null);
+        break;
+      case StateFlag.ERROR:
+        state = _State(acc.toggleableRoute, curr.flag, curr.error);
+        break;
+    }
+    return state;
+  }
+
+  _Action _coolDownScanner(acc, curr, _) {
     if (acc == null || acc == _Action.idle) {
       return curr;
     } else {
@@ -194,6 +208,8 @@ class _State {
       err = error;
     } else if (error is Exception) {
       err = ExceptionError(error);
+    } else {
+      throw Exception("error must be eather an Error or an Exception");
     }
     return _State(null, StateFlag.ERROR, err);
   }
