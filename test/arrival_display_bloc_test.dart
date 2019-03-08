@@ -1,6 +1,7 @@
 import 'package:async/async.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
+import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/presentation/arrival_display_bloc.dart' as blc;
 import 'package:test/test.dart';
 
@@ -58,5 +59,17 @@ void main() {
     bloc.toggleWay();
     rd = (await stream.next) as blc.ResultDisplay;
     expect("Way2", rd.way.name);
+  });
+
+  test("should emit [LOADING, ERROR]", () async {
+    when(fetcher.getRouteArrivals(100)).thenAnswer((_) async {
+      throw Exception("Boom!");
+    });
+
+    final stream = StreamQueue(bloc.streamResult);
+    bloc.load(100);
+    expect(await stream.next, blc.Result.loading);
+    final err = (await stream.next) as blc.ResultError;
+    expect("Exception: Boom!",(err.error as ExceptionError).exception.toString());
   });
 }

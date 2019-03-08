@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
+import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 
@@ -68,15 +69,16 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
         return Observable
             .fromFuture(_arrivalFetcher.getRouteArrivals(action.transporterId))
             .map((route) => _State.withRoute(route))
+            .onErrorReturnWith((e) => _State.withError(e))
             .startWith(_State.withFlag(StateFlag.LOADING));
       } else if (action is _ActionCoolDown) {
         return Observable
             .just(_State.withError(CoolDownError(action.remainingSeconds)));
       } else if (action is _ActionToggle) {
-        return Observable
-            .just(_State.withFlag(StateFlag.TOGGLE));
+        return Observable.just(_State.withFlag(StateFlag.TOGGLE));
       } else {
-        return Observable.just(_State.withError(Error()));
+        return Observable
+            .just(_State.withError(MessageError("Unprocessed action $action")));
       }
     }).scan((_State acc, _State curr, _) {
       _State state;
@@ -89,8 +91,8 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
           state = _State(acc.toggleableRoute, curr.flag, null);
           break;
         case StateFlag.TOGGLE:
-          state = _State(
-              acc.toggleableRoute.toggle(), StateFlag.FINISHED, null);
+          state =
+              _State(acc.toggleableRoute.toggle(), StateFlag.FINISHED, null);
           break;
         case StateFlag.ERROR:
           state = _State(acc.toggleableRoute, curr.flag, curr.error);
@@ -184,11 +186,17 @@ class _State {
   factory _State.withRoute(Route route) =>
       _State(ToggleableRoute(route), StateFlag.FINISHED, null);
 
-  factory _State.withFlag(StateFlag flag) =>
-      _State(null, flag, null);
+  factory _State.withFlag(StateFlag flag) => _State(null, flag, null);
 
-  factory _State.withError(Error error) =>
-      _State(null, StateFlag.ERROR, error);
+  factory _State.withError(dynamic error) {
+    Error err;
+    if (error is Error) {
+      err = error;
+    } else if (error is Exception) {
+      err = ExceptionError(error);
+    }
+    return _State(null, StateFlag.ERROR, err);
+  }
 
   final ToggleableRoute toggleableRoute;
 
