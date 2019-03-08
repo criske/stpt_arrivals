@@ -44,4 +44,19 @@ void main() {
     expect(await stream.next, blc.Result.loading);
     expect(true, (await stream.next) is blc.ResultDisplay);
   });
+
+  test("should emit [LOADING, DISPLAY, TOGGLE]", () async {
+    when(fetcher.getRouteArrivals(100)).thenAnswer((_) async {
+      return Route(Way(List(), "Way1"), Way(List(), "Way2"));
+    });
+
+    final stream = StreamQueue(bloc.streamResult);
+    bloc.load(100);
+    expect(await stream.next, blc.Result.loading);
+    var rd = (await stream.next) as blc.ResultDisplay;
+    expect("Way1", rd.way.name);
+    bloc.toggleWay();
+    rd = (await stream.next) as blc.ResultDisplay;
+    expect("Way2", rd.way.name);
+  });
 }

@@ -57,54 +57,60 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
 
   @override
   Stream<Result> get streamResult {
-    final loadStream = actionLoadSubject.stream.scan(coolDownScanner, _Action.idle);
+    final loadStream =
+        actionLoadSubject.stream.scan(coolDownScanner, _Action.idle);
     final toggleStream = actionToggleSubject.stream;
 
     return Observable.merge([loadStream, toggleStream]).flatMap((action) {
       if (action is _ActionIdle) {
-        return Observable.just(_State.idle());
+        return Observable.just(_State.withFlag(StateFlag.IDLE));
       } else if (action is _ActionLoad) {
         return Observable
             .fromFuture(_arrivalFetcher.getRouteArrivals(action.transporterId))
             .map((route) => _State.withRoute(route))
-            .startWith(_State.loading());
+            .startWith(_State.withFlag(StateFlag.LOADING));
       } else if (action is _ActionCoolDown) {
         return Observable
             .just(_State.withError(CoolDownError(action.remainingSeconds)));
+      } else if (action is _ActionToggle) {
+        return Observable
+            .just(_State.withFlag(StateFlag.TOGGLE));
+      } else {
+        return Observable.just(_State.withError(Error()));
       }
     }).scan((_State acc, _State curr, _) {
       _State state;
-      switch (curr.transientState) {
-        case TransientState.FINISHED:
-        case TransientState.IDLE:
+      switch (curr.flag) {
+        case StateFlag.FINISHED:
+        case StateFlag.IDLE:
           state = curr;
           break;
-        case TransientState.LOADING:
-          state = _State(acc.toggleableRoute, curr.transientState, null);
+        case StateFlag.LOADING:
+          state = _State(acc.toggleableRoute, curr.flag, null);
           break;
-        case TransientState.TOGGLE:
+        case StateFlag.TOGGLE:
           state = _State(
-              acc.toggleableRoute.toggle(), TransientState.FINISHED, null);
+              acc.toggleableRoute.toggle(), StateFlag.FINISHED, null);
           break;
-        case TransientState.ERROR:
-          state = _State(acc.toggleableRoute, curr.transientState, curr.error);
+        case StateFlag.ERROR:
+          state = _State(acc.toggleableRoute, curr.flag, curr.error);
           break;
       }
       return state;
-    }, _State.idle()).map((state) {
+    }, _State.withFlag(StateFlag.IDLE)).map((state) {
       Result result;
-      switch (state.transientState) {
-        case TransientState.IDLE:
+      switch (state.flag) {
+        case StateFlag.IDLE:
           result = Result.idle;
           break;
-        case TransientState.LOADING:
+        case StateFlag.LOADING:
           result = Result.loading;
           break;
-        case TransientState.ERROR:
+        case StateFlag.ERROR:
           result = ResultError(state.error);
           break;
-        case TransientState.FINISHED:
-        case TransientState.TOGGLE:
+        case StateFlag.FINISHED:
+        case StateFlag.TOGGLE:
           result = Result.display(state.toggleableRoute.getWay());
           break;
       }
@@ -176,24 +182,21 @@ class _ActionIdle extends _Action {
 @immutable
 class _State {
   factory _State.withRoute(Route route) =>
-      _State(ToggleableRoute(route), TransientState.FINISHED, null);
+      _State(ToggleableRoute(route), StateFlag.FINISHED, null);
 
-  factory _State.loading() => _State(null, TransientState.LOADING, null);
-
-  factory _State.idle() => _State(null, TransientState.IDLE, null);
-
-  factory _State.toggle() => _State(null, TransientState.TOGGLE, null);
+  factory _State.withFlag(StateFlag flag) =>
+      _State(null, flag, null);
 
   factory _State.withError(Error error) =>
-      _State(null, TransientState.ERROR, error);
+      _State(null, StateFlag.ERROR, error);
 
   final ToggleableRoute toggleableRoute;
 
-  final TransientState transientState;
+  final StateFlag flag;
 
   final Error error;
 
-  const _State([this.toggleableRoute, this.transientState, this.error]);
+  const _State([this.toggleableRoute, this.flag, this.error]);
 }
 
 abstract class Result {
@@ -226,7 +229,7 @@ class ResultDisplay implements Result {
   const ResultDisplay(this.way);
 }
 
-enum TransientState { IDLE, LOADING, FINISHED, TOGGLE, ERROR }
+enum StateFlag { IDLE, LOADING, FINISHED, TOGGLE, ERROR }
 
 @immutable
 class ToggleableRoute {

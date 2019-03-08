@@ -11,9 +11,9 @@ class Arrival {
 class Way {
   final List<Arrival> arrivals;
 
-  final String way;
+  final String name;
 
-  const Way(this.arrivals, this.way);
+  const Way(this.arrivals, this.name);
 }
 
 class Route {
