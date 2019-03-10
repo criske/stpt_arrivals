@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
@@ -8,8 +9,9 @@ import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 
 abstract class ArrivalDisplayBloc implements DisposableBloc {
+  static const Duration coolDownThreshold = const Duration(seconds: 30);
 
-  final Stream<Result> streamResult;
+  final Stream<ArrivalState> streamResult = Stream.empty();
 
   void load(int transporterId);
 
@@ -23,131 +25,110 @@ abstract class DisposableBloc {
 }
 
 class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
-  static const Duration coolDownThreshold = const Duration(seconds: 30);
-
   TimeProvider _timeProvider;
 
   RouteArrivalFetcher _arrivalFetcher;
 
-  ArrivalDisplayBlocImpl(this._timeProvider, this._arrivalFetcher);
+  ArrivalState _initialState;
 
-  BehaviorSubject<_Action> actionLoadSubject = BehaviorSubject<_Action>()
+  ArrivalDisplayBlocImpl(this._timeProvider, this._arrivalFetcher,
+      [this._initialState]);
+
+  BehaviorSubject<_Action> _actionLoadSubject = BehaviorSubject<_Action>()
     ..add(_Action.idle);
 
-  BehaviorSubject<_Action> actionCancelSubject = BehaviorSubject<_Action>();
+  BehaviorSubject<_Action> _actionCancelSubject = BehaviorSubject<_Action>();
 
-  BehaviorSubject<_Action> actionToggleSubject = BehaviorSubject<_Action>();
+  BehaviorSubject<_Action> _actionToggleSubject = BehaviorSubject<_Action>();
 
   @override
   void cancel() =>
-      actionCancelSubject.add(_Action.cancel(_timeProvider.timeMillis()));
+      _actionCancelSubject.add(_Action.cancel(_timeProvider.timeMillis()));
 
   @override
-  void load(int transporterId) => actionLoadSubject
+  void load(int transporterId) => _actionLoadSubject
       .add(_Action.load(_timeProvider.timeMillis(), transporterId));
 
   @override
   void toggleWay() =>
-      actionToggleSubject.add(_Action.toggleWay(_timeProvider.timeMillis()));
+      _actionToggleSubject.add(_Action.toggleWay(_timeProvider.timeMillis()));
 
   @override
   void dispose() {
-    actionLoadSubject.sink.close();
-    actionToggleSubject.sink.close();
-    actionCancelSubject.sink.close();
+    _actionLoadSubject.sink.close();
+    _actionToggleSubject.sink.close();
+    _actionCancelSubject.sink.close();
   }
 
   @override
-  Stream<Result> get streamResult {
+  Stream<ArrivalState> get streamResult {
     final loadStream =
-        actionLoadSubject.stream.scan(_coolDownController, _Action.idle);
-    final toggleStream = actionToggleSubject.stream;
+        _actionLoadSubject.stream.scan(_coolDownController, _Action.idle);
+    final toggleStream = _actionToggleSubject.stream;
 
-    return Observable
-        .merge([loadStream, toggleStream])
+    return Observable.merge([loadStream, toggleStream])
         .flatMap(_actionController)
-        .scan(_stateReducer, _State.withFlag(StateFlag.IDLE))
-        .map(_stateToResultMapper);
+        .scan(_stateReducer, _initialState ?? ArrivalState.defaultState);
   }
 
   _Action _coolDownController(acc, curr, _) {
-    if (acc == null || acc == _Action.idle || curr == _Action.idle) {
+    if (acc is _ActionIdle || curr is _ActionIdle) {
       return curr;
     } else {
-      final timeDiff = _timeDiff(acc.time, curr.time);
-      if (timeDiff < coolDownThreshold) {
-        return _ActionCoolDown(curr.time, timeDiff.inSeconds);
+      final timeDiff =
+          Duration(milliseconds: curr.time) - Duration(milliseconds: acc.time);
+      if (timeDiff < ArrivalDisplayBloc.coolDownThreshold) {
+        return _ActionCoolDown(
+            acc.time,
+            ArrivalDisplayBloc.coolDownThreshold.inSeconds -
+                timeDiff.inSeconds);
       } else {
         return curr;
       }
     }
   }
 
-  Stream<_State> _actionController(action) {
+  Stream<ArrivalState> _actionController(action) {
     if (action is _ActionIdle) {
-      return Observable.just(_State.withFlag(StateFlag.IDLE));
+      return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE));
     } else if (action is _ActionLoad) {
-      return Observable
-          .fromFuture(_arrivalFetcher.getRouteArrivals(action.transporterId))
-          .map((route) => _State.withRoute(route))
-          .onErrorReturnWith((e) => _State.withError(e))
-          .startWith(_State.withFlag(StateFlag.LOADING))
-          .takeUntil(actionCancelSubject.stream)
-          .doOnCancel(() => actionLoadSubject.add(_Action.idle));
+      return Observable.fromFuture(
+              _arrivalFetcher.getRouteArrivals(action.transporterId))
+          .map((route) => ArrivalState.partialRoute(route))
+          .onErrorReturnWith((e) => ArrivalState.partialError(e))
+          .startWith(ArrivalState.partialFlag(StateFlag.LOADING))
+          .takeUntil(_actionCancelSubject.stream.doOnData(
+              (_) => _actionLoadSubject.add(_Action.idle)));
     } else if (action is _ActionCoolDown) {
-      return Observable
-          .just(_State.withError(CoolDownError(action.remainingSeconds)));
+      return Observable.just(
+          ArrivalState.partialError(CoolDownError(action.remainingSeconds)));
     } else if (action is _ActionToggle) {
-      return Observable.just(_State.withFlag(StateFlag.TOGGLE));
+      return Observable.just(ArrivalState.partialFlag(StateFlag.TOGGLE));
     } else {
-      return Observable
-          .just(_State.withError(MessageError("Unprocessed action $action")));
+      return Observable.just(ArrivalState.partialError(
+          MessageError("Unprocessed action $action")));
     }
   }
 
-  Result _stateToResultMapper(state) {
-    Result result;
-    switch (state.flag) {
-      case StateFlag.IDLE:
-        result = Result.idle;
-        break;
-      case StateFlag.LOADING:
-        result = Result.loading;
-        break;
-      case StateFlag.ERROR:
-        result = ResultError(state.error);
-        break;
-      case StateFlag.FINISHED:
-      case StateFlag.TOGGLE:
-        result = Result.display(state.toggleableRoute.getWay());
-        break;
-    }
-    return result;
-  }
-
-  _State _stateReducer(_State acc, _State curr, _) {
-    _State state;
+  ArrivalState _stateReducer(ArrivalState acc, ArrivalState curr, _) {
+    ArrivalState state;
     switch (curr.flag) {
       case StateFlag.FINISHED:
-        state = _State(curr.toggleableRoute, curr.flag, null);
+        state = ArrivalState(curr.toggleableRoute, curr.flag, null);
         break;
       case StateFlag.IDLE:
       case StateFlag.LOADING:
-        state = _State(acc.toggleableRoute, curr.flag, null);
+        state = ArrivalState(acc.toggleableRoute, curr.flag, null);
         break;
       case StateFlag.TOGGLE:
-        state = _State(acc.toggleableRoute.toggle(), StateFlag.FINISHED, null);
+        state = ArrivalState(
+            acc.toggleableRoute.toggle(), StateFlag.FINISHED, null);
         break;
       case StateFlag.ERROR:
-        state = _State(acc.toggleableRoute, curr.flag, curr.error);
+        state = ArrivalState(acc.toggleableRoute, curr.flag, curr.error);
         break;
     }
     return state;
-  }
-
-  Duration _timeDiff(int timeMillis1, int timeMillis2) {
-    return Duration(milliseconds: timeMillis2) -
-        Duration(milliseconds: timeMillis1);
   }
 }
 
@@ -163,7 +144,7 @@ abstract class _Action {
 
   factory _Action.toggleWay(time) => _ActionToggle(time);
 
-  static const idle = _ActionIdle(-1);
+  static const idle = _ActionIdle(0);
 }
 
 @immutable
@@ -185,22 +166,28 @@ class _ActionCoolDown extends _Action {
   const _ActionCoolDown(time, this.remainingSeconds) : super(time);
 }
 
+@immutable
 class _ActionToggle extends _Action {
   const _ActionToggle(time) : super(time);
 }
 
+@immutable
 class _ActionIdle extends _Action {
   const _ActionIdle(time) : super(time);
 }
 
 @immutable
-class _State {
-  factory _State.withRoute(Route route) =>
-      _State(ToggleableRoute(route), StateFlag.FINISHED, null);
+class ArrivalState {
+  static final _emptyRoute =
+      ToggleableRoute(Route(Way(List(), ""), Way(List(), "")));
 
-  factory _State.withFlag(StateFlag flag) => _State(null, flag, null);
+  factory ArrivalState.partialRoute(Route route) =>
+      ArrivalState(ToggleableRoute(route), StateFlag.FINISHED, null);
 
-  factory _State.withError(dynamic error) {
+  factory ArrivalState.partialFlag(StateFlag flag) =>
+      ArrivalState(_emptyRoute, flag, null);
+
+  factory ArrivalState.partialError(dynamic error) {
     Error err;
     if (error is Error) {
       err = error;
@@ -209,8 +196,17 @@ class _State {
     } else {
       throw Exception("error must be eather an Error or an Exception");
     }
-    return _State(null, StateFlag.ERROR, err);
+    return ArrivalState(null, StateFlag.ERROR, err);
   }
+
+  ArrivalState nextRoute(ToggleableRoute route) =>
+      ArrivalState(route, this.flag, this.error);
+
+  ArrivalState nextFlag(StateFlag flag) =>
+      ArrivalState(this.toggleableRoute, flag, this.error);
+
+  ArrivalState nextError(Error error) =>
+      ArrivalState(this.toggleableRoute, this.flag, error);
 
   final ToggleableRoute toggleableRoute;
 
@@ -218,37 +214,24 @@ class _State {
 
   final Error error;
 
-  const _State([this.toggleableRoute, this.flag, this.error]);
-}
+  const ArrivalState([this.toggleableRoute, this.flag, this.error]);
 
-abstract class Result {
-  factory Result.display(way) => ResultDisplay(way);
-  static const idle = ResultIdle();
-  static const loading = ResultLoading();
-}
+  static ArrivalState defaultState =
+      ArrivalState(_emptyRoute, StateFlag.IDLE, null);
 
-@immutable
-class ResultIdle implements Result {
-  const ResultIdle();
-}
+  @override
+  bool operator ==(other) =>
+      other is ArrivalState &&
+      this.flag == other.flag &&
+      this.error == other.error &&
+      this.toggleableRoute == other.toggleableRoute;
 
-@immutable
-class ResultLoading implements Result {
-  const ResultLoading();
-}
+  @override
+  int get hashCode => hashValues(toggleableRoute, flag, error);
 
-@immutable
-class ResultError implements Result {
-  final Error error;
-
-  const ResultError(this.error);
-}
-
-@immutable
-class ResultDisplay implements Result {
-  final Way way;
-
-  const ResultDisplay(this.way);
+  @override
+  String toString() =>
+      "ArrivalState[route:$toggleableRoute, flat:$flag, error:$error]";
 }
 
 enum StateFlag { IDLE, LOADING, FINISHED, TOGGLE, ERROR }
@@ -264,10 +247,33 @@ class ToggleableRoute {
   Way getWay() => _isWayTo ? _route.way1 : _route.way2;
 
   ToggleableRoute toggle() => ToggleableRoute(this._route, !this._isWayTo);
+
+  @override
+  bool operator ==(other) =>
+      other is ToggleableRoute &&
+      this._isWayTo == other._isWayTo &&
+      this._route == other._route;
+
+  @override
+  int get hashCode => hashValues(_route, _isWayTo);
+
+  @override
+  String toString() => "ToggleableRoute:[route:$_route, isWayTo:$_isWayTo]";
 }
 
+@immutable
 class CoolDownError extends Error {
   final int remainingSeconds;
 
   CoolDownError(this.remainingSeconds);
+
+  @override
+  int get hashCode => remainingSeconds.hashCode;
+
+  @override
+  bool operator ==(other) =>
+      other is CoolDownError && remainingSeconds == other.remainingSeconds;
+
+  @override
+  String toString() => "CoolDownError[seconds:$remainingSeconds]";
 }

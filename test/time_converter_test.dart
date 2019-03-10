@@ -1,7 +1,8 @@
 import 'package:intl/intl.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
-import 'package:test/test.dart';
+import 'package:test_api/test_api.dart';
+
 
 import 'mocks.dart';
 
@@ -20,28 +21,28 @@ void main() {
 
   test("should get time when ':' time format is provided", () {
     final formatted = converter.toReadableTime(
-        converter.toAbsoluteTime("19:00"), format.pattern);
+        converter.toTimeMillis("19:00"), format.pattern);
     expect(formatted, "2019-03-07 19:00");
   });
 
   test("should get time when '.min' time format is provided", () {
     var formatted = converter.toReadableTime(
-        converter.toAbsoluteTime("6 min."), format.pattern);
+        converter.toTimeMillis("6 min."), format.pattern);
     expect(formatted, "2019-03-07 17:06");
     formatted = converter.toReadableTime(
-        converter.toAbsoluteTime("66 min."), format.pattern);
+        converter.toTimeMillis("66 min."), format.pattern);
     expect(formatted, "2019-03-07 18:06");
   });
 
   test("should get time when '>>' time format is provided", () {
     final formatted = converter.toReadableTime(
-        converter.toAbsoluteTime(">>"), format.pattern);
+        converter.toTimeMillis(">>"), format.pattern);
     expect(formatted, "2019-03-07 17:00");
   });
 
   test("should get 0 when '*' or unkown time format is provided", () {
-    expect(converter.toAbsoluteTime("*"), 0);
-    expect(converter.toAbsoluteTime("foo"), 0);
+    expect(converter.toTimeMillis("*"), 0);
+    expect(converter.toTimeMillis("foo"), 0);
   });
 }
 

@@ -1,7 +1,6 @@
 import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
-import 'package:test/test.dart';
-import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
+import 'package:test_api/test_api.dart';
 
 void main() {
   const htmlResult = """  

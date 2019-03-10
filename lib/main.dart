@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
+import 'package:stpt_arrivals/presentation/arrival_display_bloc.dart';
+import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
+import 'package:stpt_arrivals/services/parser/time_converter.dart';
+import 'package:stpt_arrivals/services/remote_config.dart';
+import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 
 void main() => runApp(new MyApp());
 
@@ -20,45 +26,22 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: new MyHomePage(title: 'Flutter Demo Home Page'),
+      home: ArrivalDisplayBlocProvider(
+          child: ArrivalDisplayWidget(886),
+          bloc: ArrivalDisplayBlocProvider.blocInstance),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
+class ArrivalDisplayWidget extends StatelessWidget {
+  final transporterId;
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  _MyHomePageState createState() => new _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  ArrivalDisplayWidget(this.transporterId, {Key key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final bloc = ArrivalDisplayBlocProvider.of(context).bloc;
+
     // This method is rerun every time setState is called, for instance as done
     // by the _incrementCounter method above.
     //
@@ -66,45 +49,111 @@ class _MyHomePageState extends State<MyHomePage> {
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
     return new Scaffold(
-      appBar: new AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: new Text(widget.title),
-      ),
-      body: new Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: new Column(
-          // Column is also layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug paint" (press "p" in the console where you ran
-          // "flutter run", or select "Toggle Debug Paint" from the Flutter tool
-          // window in IntelliJ) to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            new Text(
-              'You have pushed the button this many times:',
-            ),
-            new Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.display1,
-            ),
-          ],
+        appBar: new AppBar(
+          // Here we take the value from the MyHomePage object that was created by
+          // the App.build method, and use it to set our appbar title.
+          title: new Text("RATT Arrivals"),
         ),
-      ),
-      floatingActionButton: new FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: new Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+        body: StreamBuilder(
+            stream: bloc.streamResult,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return ArrivalStateProvider(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          RaisedButton(
+                            child: const Text('Refresh'),
+                            onPressed: () => bloc.load(transporterId),
+                          ),
+                          RaisedButton(
+                            child: const Text('Switch Way'),
+                            onPressed: () => bloc.toggleWay(),
+                          ),
+                        ],
+                      ),
+                      ArrivalListView(),
+                    ],
+                  ),
+                  state: snapshot.data as ArrivalState,
+                );
+              } else {
+                return CircularProgressIndicator();
+              }
+            }));
+  }
+}
+
+class ArrivalListView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    var state = ArrivalStateProvider.of(context).state;
+    if (state.flag == StateFlag.ERROR) {
+      var error = state.error;
+      if (error is CoolDownError) {
+        print("Wait more ${error.remainingSeconds}");
+        // Scaffold.of(context).showSnackBar(SnackBar(content: Text("Wait ${error.remainingSeconds} before refresh")));
+      }
+    }
+    final arrivals = state.toggleableRoute.getWay().arrivals;
+
+    return Expanded(
+      child: ListView.builder(
+          itemCount: arrivals.length,
+          itemBuilder: (context, position) {
+            final arrival = arrivals.elementAt(position);
+            return Card(
+              child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text("${arrival.station.name} ${arrival.time}",
+                      style: TextStyle(fontSize: 14.0))),
+            );
+          }),
     );
+  }
+}
+
+class ArrivalDisplayBlocProvider extends InheritedWidget {
+
+  static final blocInstance = _createDefaultArrivalDisplayBloc();
+
+  final ArrivalDisplayBloc bloc;
+
+  ArrivalDisplayBlocProvider({Key key, Widget child, this.bloc})
+      : super(key: key, child: child);
+
+  static ArrivalDisplayBlocProvider of(BuildContext context) {
+    return context.inheritFromWidgetOfExactType(ArrivalDisplayBlocProvider)
+        as ArrivalDisplayBlocProvider;
+  }
+
+  static ArrivalDisplayBlocImpl _createDefaultArrivalDisplayBloc() {
+    final timeProvider = SystemTimeProvider();
+    final timeConverter = ArrivalTimeConverterImpl(timeProvider);
+    final bloc = ArrivalDisplayBlocImpl(
+        SystemTimeProvider(),
+        RouteArrivalFetcher(RouteArrivalParserImpl(timeConverter),
+            RemoteConfigImpl(), Client()));
+    return bloc;
+  }
+
+  @override
+  bool updateShouldNotify(InheritedWidget oldWidget) => true;
+}
+
+class ArrivalStateProvider extends InheritedWidget {
+  final ArrivalState state;
+
+  ArrivalStateProvider({Key key, Widget child, this.state})
+      : super(key: key, child: child);
+
+  @override
+  bool updateShouldNotify(InheritedWidget oldWidget) => true;
+
+  static ArrivalStateProvider of(BuildContext context) {
+    return context.inheritFromWidgetOfExactType(ArrivalStateProvider)
+        as ArrivalStateProvider;
   }
 }
