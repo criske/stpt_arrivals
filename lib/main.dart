@@ -15,47 +15,41 @@ class MyApp extends StatelessWidget {
     return new MaterialApp(
       title: 'Flutter Demo',
       theme: new ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or press Run > Flutter Hot Reload in IntelliJ). Notice that the
-        // counter didn't reset back to zero; the application is not restarted.
         primarySwatch: Colors.blue,
       ),
       debugShowCheckedModeBanner: false,
-      home: ArrivalDisplayBlocProvider(
-          child: ArrivalDisplayWidget(886),
-          bloc: ArrivalDisplayBlocProvider.blocInstance),
+      home: Scaffold(
+        appBar: AppBar(title: Text("RATT Arrivals")),
+        body:  ArrivalDisplayBlocProvider(
+            child: ArrivalDisplayWidget(886),
+            bloc: ArrivalDisplayBlocProvider.blocInstance)
+      )
     );
   }
 }
 
-class ArrivalDisplayWidget extends StatelessWidget {
+class ArrivalDisplayWidget extends StatefulWidget {
   final transporterId;
 
   ArrivalDisplayWidget(this.transporterId, {Key key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final bloc = ArrivalDisplayBlocProvider.of(context).bloc;
+  State<StatefulWidget> createState() => ArrivalDisplayWidgetState();
+}
 
+class ArrivalDisplayWidgetState extends State<ArrivalDisplayWidget> {
+  ArrivalDisplayBloc _bloc;
+
+  @override
+  Widget build(BuildContext context) {
     // This method is rerun every time setState is called, for instance as done
     // by the _incrementCounter method above.
     //
     // The Flutter framework has been optimized to make rerunning build methods
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
-    return new Scaffold(
-        appBar: new AppBar(
-          // Here we take the value from the MyHomePage object that was created by
-          // the App.build method, and use it to set our appbar title.
-          title: new Text("RATT Arrivals"),
-        ),
-        body: StreamBuilder(
-            stream: bloc.streamResult,
+    return  StreamBuilder(
+            stream: _bloc.streamState,
             builder: (context, snapshot) {
               if (snapshot.hasData) {
                 return ArrivalStateProvider(
@@ -66,11 +60,11 @@ class ArrivalDisplayWidget extends StatelessWidget {
                         children: <Widget>[
                           RaisedButton(
                             child: const Text('Refresh'),
-                            onPressed: () => bloc.load(transporterId),
+                            onPressed: () => _bloc.load(widget.transporterId),
                           ),
                           RaisedButton(
                             child: const Text('Switch Way'),
-                            onPressed: () => bloc.toggleWay(),
+                            onPressed: () => _bloc.toggleWay(),
                           ),
                         ],
                       ),
@@ -82,7 +76,31 @@ class ArrivalDisplayWidget extends StatelessWidget {
               } else {
                 return CircularProgressIndicator();
               }
-            }));
+            });
+  }
+
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _bloc = ArrivalDisplayBlocProvider.of(context).bloc;
+    _bloc.streamState.listen((state) {
+      if (state.error != null) {
+        var error = state.error;
+        if (error is CoolDownError) {
+          Scaffold.of(context).hideCurrentSnackBar();
+          Scaffold.of(context).showSnackBar(SnackBar(
+              content: Text(
+                  "Wait ${error.remainingSeconds} seconds before refresh")));
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _bloc.dispose();
+    super.dispose();
   }
 }
 
@@ -90,13 +108,7 @@ class ArrivalListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var state = ArrivalStateProvider.of(context).state;
-    if (state.flag == StateFlag.ERROR) {
-      var error = state.error;
-      if (error is CoolDownError) {
-        print("Wait more ${error.remainingSeconds}");
-        // Scaffold.of(context).showSnackBar(SnackBar(content: Text("Wait ${error.remainingSeconds} before refresh")));
-      }
-    }
+
     final arrivals = state.toggleableRoute.getWay().arrivals;
 
     return Expanded(
@@ -116,7 +128,6 @@ class ArrivalListView extends StatelessWidget {
 }
 
 class ArrivalDisplayBlocProvider extends InheritedWidget {
-
   static final blocInstance = _createDefaultArrivalDisplayBloc();
 
   final ArrivalDisplayBloc bloc;

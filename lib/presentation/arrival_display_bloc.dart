@@ -11,7 +11,7 @@ import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 abstract class ArrivalDisplayBloc implements DisposableBloc {
   static const Duration coolDownThreshold = const Duration(seconds: 30);
 
-  final Stream<ArrivalState> streamResult = Stream.empty();
+  final Stream<ArrivalState> streamState = Stream.empty();
 
   void load(int transporterId);
 
@@ -61,7 +61,7 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   }
 
   @override
-  Stream<ArrivalState> get streamResult {
+  Stream<ArrivalState> get streamState {
     final loadStream =
         _actionLoadSubject.stream.scan(_coolDownController, _Action.idle);
     final toggleStream = _actionToggleSubject.stream;

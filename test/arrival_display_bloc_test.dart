@@ -23,7 +23,7 @@ void main() {
     timeline = TimelineTimeProvider();
     fetcher = MockRouteArrivalFetcher();
     bloc = blc.ArrivalDisplayBlocImpl(timeline, fetcher);
-    queue = StreamQueue(bloc.streamResult);
+    queue = StreamQueue(bloc.streamState);
     state = blc.ArrivalState.defaultState;
   });
 
@@ -68,7 +68,7 @@ void main() {
 
     state = state.nextFlag(blc.StateFlag.FINISHED).nextRoute(toggleableRoute);
     bloc = blc.ArrivalDisplayBlocImpl(timeline, fetcher, state);
-    queue = StreamQueue(bloc.streamResult);
+    queue = StreamQueue(bloc.streamState);
     bloc.toggleWay();
     await queue.next;
     state = state.nextRoute(toggleableRoute.toggle());
