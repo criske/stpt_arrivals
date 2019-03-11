@@ -95,10 +95,13 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       return Observable.fromFuture(
               _arrivalFetcher.getRouteArrivals(action.transporterId))
           .map((route) => ArrivalState.partialRoute(route))
+          .doOnError((_, __) {
+            _actionLoadSubject.add(_Action.idle);
+          })
           .onErrorReturnWith((e) => ArrivalState.partialError(e))
           .startWith(ArrivalState.partialFlag(StateFlag.LOADING))
-          .takeUntil(_actionCancelSubject.stream.doOnData(
-              (_) => _actionLoadSubject.add(_Action.idle)));
+          .takeUntil(_actionCancelSubject.stream
+              .doOnData((_) => _actionLoadSubject.add(_Action.idle)));
     } else if (action is _ActionCoolDown) {
       return Observable.just(
           ArrivalState.partialError(CoolDownError(action.remainingSeconds)));

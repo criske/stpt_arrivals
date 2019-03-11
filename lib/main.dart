@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
+import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/presentation/arrival_display_bloc.dart';
 import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
@@ -13,18 +14,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new MaterialApp(
-      title: 'Flutter Demo',
-      theme: new ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        appBar: AppBar(title: Text("RATT Arrivals")),
-        body:  ArrivalDisplayBlocProvider(
-            child: ArrivalDisplayWidget(886),
-            bloc: ArrivalDisplayBlocProvider.blocInstance)
-      )
-    );
+        title: 'Flutter Demo',
+        theme: new ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+            appBar: AppBar(title: Text("RATT Arrivals")),
+            body: ArrivalDisplayBlocProvider(
+                child: ArrivalDisplayWidget(886),
+                bloc: ArrivalDisplayBlocProvider.blocInstance)));
   }
 }
 
@@ -48,37 +47,36 @@ class ArrivalDisplayWidgetState extends State<ArrivalDisplayWidget> {
     // The Flutter framework has been optimized to make rerunning build methods
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
-    return  StreamBuilder(
-            stream: _bloc.streamState,
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                return ArrivalStateProvider(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+    return StreamBuilder(
+        stream: _bloc.streamState,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return ArrivalStateProvider(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Row(
                     children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          RaisedButton(
-                            child: const Text('Refresh'),
-                            onPressed: () => _bloc.load(widget.transporterId),
-                          ),
-                          RaisedButton(
-                            child: const Text('Switch Way'),
-                            onPressed: () => _bloc.toggleWay(),
-                          ),
-                        ],
+                      RaisedButton(
+                        child: const Text('Refresh'),
+                        onPressed: () => _bloc.load(widget.transporterId),
                       ),
-                      ArrivalListView(),
+                      RaisedButton(
+                        child: const Text('Switch Way'),
+                        onPressed: () => _bloc.toggleWay(),
+                      ),
                     ],
                   ),
-                  state: snapshot.data as ArrivalState,
-                );
-              } else {
-                return CircularProgressIndicator();
-              }
-            });
+                  ArrivalListView(),
+                ],
+              ),
+              state: snapshot.data as ArrivalState,
+            );
+          } else {
+            return CircularProgressIndicator();
+          }
+        });
   }
-
 
   @override
   void didChangeDependencies() {
@@ -86,13 +84,20 @@ class ArrivalDisplayWidgetState extends State<ArrivalDisplayWidget> {
     _bloc = ArrivalDisplayBlocProvider.of(context).bloc;
     _bloc.streamState.listen((state) {
       if (state.error != null) {
-        var error = state.error;
+        final error = state.error;
+        var msg;
         if (error is CoolDownError) {
-          Scaffold.of(context).hideCurrentSnackBar();
-          Scaffold.of(context).showSnackBar(SnackBar(
-              content: Text(
-                  "Wait ${error.remainingSeconds} seconds before refresh")));
+          msg = "Wait ${error.remainingSeconds} seconds before refresh";
+        } else if (error is ExceptionError) {
+          msg = error.exception.toString();
+        }else{
+          msg = error.toString();
         }
+        Scaffold.of(context).hideCurrentSnackBar();
+        Scaffold.of(context).showSnackBar(SnackBar(
+            content: Text(msg),
+            duration: Duration(seconds: 5),
+        ));
       }
     });
   }

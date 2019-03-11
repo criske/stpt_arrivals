@@ -9,3 +9,4 @@ class MessageError extends Error {
 
   MessageError(this.message);
 }
+
