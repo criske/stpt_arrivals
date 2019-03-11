@@ -12,6 +12,8 @@ class MockClient extends Mock implements Client {}
 
 class MockTimeProvider extends Mock implements TimeProvider {}
 
+class MockArrivalTimeConverter extends Mock implements ArrivalTimeConverter {}
+
 class TimelineTimeProvider implements TimeProvider {
   DateTime _timeline;
 

@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
 import 'package:stpt_arrivals/models/error.dart';
+import 'package:stpt_arrivals/presentation/arrival_ui.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 
@@ -12,6 +14,14 @@ abstract class ArrivalDisplayBloc implements DisposableBloc {
   static const Duration coolDownThreshold = const Duration(seconds: 30);
 
   final Stream<ArrivalState> streamState = Stream.empty();
+
+  final Stream<bool> loadingStream = Stream.empty();
+
+  final Stream<String> wayNameStream = Stream.empty();
+
+  final Stream<ErrorUI> errorStream = Stream.empty();
+
+  final Stream<List<ArrivalUI>> arrivalsStream = Stream.empty();
 
   void load(int transporterId);
 
@@ -27,12 +37,25 @@ abstract class DisposableBloc {
 class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   TimeProvider _timeProvider;
 
+  ArrivalTimeConverter _arrivalTimeConverter;
+
   RouteArrivalFetcher _arrivalFetcher;
 
   ArrivalState _initialState;
 
-  ArrivalDisplayBlocImpl(this._timeProvider, this._arrivalFetcher,
-      [this._initialState]);
+  Observable<ArrivalState> _stateObservable;
+
+  ArrivalDisplayBlocImpl(
+      this._timeProvider, this._arrivalTimeConverter, this._arrivalFetcher,
+      [this._initialState]) {
+    var loadStream =
+        _actionLoadSubject.stream.scan(_coolDownController, _Action.idle);
+    var toggleStream = _actionToggleSubject.stream;
+    _stateObservable = Observable.merge([loadStream, toggleStream])
+        .flatMap(_actionController)
+        .scan(_stateReducer, _initialState ?? ArrivalState.defaultState)
+        .share();
+  }
 
   BehaviorSubject<_Action> _actionLoadSubject = BehaviorSubject<_Action>()
     ..add(_Action.idle);
@@ -61,15 +84,53 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   }
 
   @override
-  Stream<ArrivalState> get streamState {
-    final loadStream =
-        _actionLoadSubject.stream.scan(_coolDownController, _Action.idle);
-    final toggleStream = _actionToggleSubject.stream;
+  Stream<ArrivalState> get streamState => _stateObservable;
 
-    return Observable.merge([loadStream, toggleStream])
-        .flatMap(_actionController)
-        .scan(_stateReducer, _initialState ?? ArrivalState.defaultState);
-  }
+  @override
+  Stream<List<ArrivalUI>> get arrivalsStream => _stateObservable
+      .map((s)=> s.toggleableRoute.getWay().arrivals)
+      .distinct((prev, next) => ListEquality().equals(prev, next))
+      .map((arrivals) => arrivals.map((a) {
+    //final now = _timeProvider.timeMillis();
+    //          final time1Diff = Duration(milliseconds: a.time.millis) -
+//                  Duration(milliseconds: now)
+    final time1 = TimeUI(
+        _arrivalTimeConverter.toReadableTime(a.time.millis, "HH:mm"));
+
+    final time2 = a.time2 == null ? TimeUI.none : TimeUI(
+        _arrivalTimeConverter.toReadableTime(a.time2.millis, "HH:mm"));
+        return ArrivalUI(a.station.id, a.station.name, time1, time2);
+        }).toList());
+
+  @override
+  Stream<ErrorUI> get errorStream => _stateObservable
+          .skipWhile((s) {
+            return s.flag != StateFlag.ERROR;
+          })
+          .map((s) => s.error)
+          .distinct()
+          .map((e) {
+        var msg;
+        if (e is CoolDownError) {
+          msg = "Wait ${e.remainingSeconds} seconds more and then try again";
+        } else if (e is ExceptionError) {
+          var exStr = e.exception.toString();
+          msg = exStr.substring(exStr.indexOf(" "));
+        } else if (e is MessageError) {
+          msg = e.message;
+        } else {
+          msg = e.toString();
+        }
+        return ErrorUI(msg);
+      });
+
+  @override
+  Stream<bool> get loadingStream =>
+      _stateObservable.map((s) => s.flag == StateFlag.LOADING).distinct();
+
+  @override
+  Stream<String> get wayNameStream =>
+      _stateObservable.map((s) => s.toggleableRoute.getWay().name).distinct();
 
   _Action _coolDownController(acc, curr, _) {
     if (acc is _ActionIdle || curr is _ActionIdle) {

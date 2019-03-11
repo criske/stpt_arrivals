@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
-import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/presentation/arrival_display_bloc.dart';
+import 'package:stpt_arrivals/presentation/arrival_ui.dart';
 import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/remote_config.dart';
@@ -21,9 +21,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         home: Scaffold(
             appBar: AppBar(title: Text("RATT Arrivals")),
-            body: ArrivalDisplayBlocProvider(
-                child: ArrivalDisplayWidget(886),
-                bloc: ArrivalDisplayBlocProvider.blocInstance)));
+            body: ArrivalDisplayWidget(886)));
   }
 }
 
@@ -39,6 +37,16 @@ class ArrivalDisplayWidget extends StatefulWidget {
 class ArrivalDisplayWidgetState extends State<ArrivalDisplayWidget> {
   ArrivalDisplayBloc _bloc;
 
+  ArrivalDisplayWidgetState() {
+    final timeProvider = SystemTimeProvider();
+    final timeConverter = ArrivalTimeConverterImpl(timeProvider);
+    _bloc = ArrivalDisplayBlocImpl(
+        SystemTimeProvider(),
+        timeConverter,
+        RouteArrivalFetcher(RouteArrivalParserImpl(timeConverter),
+            RemoteConfigImpl(), Client()));
+  }
+
   @override
   Widget build(BuildContext context) {
     // This method is rerun every time setState is called, for instance as done
@@ -47,58 +55,42 @@ class ArrivalDisplayWidgetState extends State<ArrivalDisplayWidget> {
     // The Flutter framework has been optimized to make rerunning build methods
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
-    return StreamBuilder(
-        stream: _bloc.streamState,
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            return ArrivalStateProvider(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      RaisedButton(
-                        child: const Text('Refresh'),
-                        onPressed: () => _bloc.load(widget.transporterId),
-                      ),
-                      RaisedButton(
-                        child: const Text('Switch Way'),
-                        onPressed: () => _bloc.toggleWay(),
-                      ),
-                    ],
-                  ),
-                  ArrivalListView(),
-                ],
-              ),
-              state: snapshot.data as ArrivalState,
-            );
-          } else {
-            return CircularProgressIndicator();
-          }
-        });
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            RaisedButton(
+              child: const Text('Refresh'),
+              onPressed: () => _bloc.load(widget.transporterId),
+            ),
+            RaisedButton(
+              child: const Text('Switch Way'),
+              onPressed: () => _bloc.toggleWay(),
+            ),
+          ],
+        ),
+        StreamBuilder(
+          stream: _bloc.wayNameStream,
+          builder: (context, snapshot) =>
+              snapshot.hasData ? Text(snapshot.data) : Container(),
+        ),
+        ArrivalListView(
+          bloc: _bloc,
+        ),
+      ],
+    );
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _bloc = ArrivalDisplayBlocProvider.of(context).bloc;
-    _bloc.streamState.listen((state) {
-      if (state.error != null) {
-        final error = state.error;
-        var msg;
-        if (error is CoolDownError) {
-          msg = "Wait ${error.remainingSeconds} seconds before refresh";
-        } else if (error is ExceptionError) {
-          msg = error.exception.toString();
-        }else{
-          msg = error.toString();
-        }
-        Scaffold.of(context).hideCurrentSnackBar();
-        Scaffold.of(context).showSnackBar(SnackBar(
-            content: Text(msg),
-            duration: Duration(seconds: 5),
-        ));
-      }
+    _bloc.errorStream.listen((e) {
+      Scaffold.of(context).hideCurrentSnackBar();
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text(e.message),
+        duration: Duration(seconds: 3),
+      ));
     });
   }
 
@@ -110,66 +102,49 @@ class ArrivalDisplayWidgetState extends State<ArrivalDisplayWidget> {
 }
 
 class ArrivalListView extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    var state = ArrivalStateProvider.of(context).state;
-
-    final arrivals = state.toggleableRoute.getWay().arrivals;
-
-    return Expanded(
-      child: ListView.builder(
-          itemCount: arrivals.length,
-          itemBuilder: (context, position) {
-            final arrival = arrivals.elementAt(position);
-            return Card(
-              child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text("${arrival.station.name} ${arrival.time}",
-                      style: TextStyle(fontSize: 14.0))),
-            );
-          }),
-    );
-  }
-}
-
-class ArrivalDisplayBlocProvider extends InheritedWidget {
-  static final blocInstance = _createDefaultArrivalDisplayBloc();
-
   final ArrivalDisplayBloc bloc;
 
-  ArrivalDisplayBlocProvider({Key key, Widget child, this.bloc})
-      : super(key: key, child: child);
-
-  static ArrivalDisplayBlocProvider of(BuildContext context) {
-    return context.inheritFromWidgetOfExactType(ArrivalDisplayBlocProvider)
-        as ArrivalDisplayBlocProvider;
-  }
-
-  static ArrivalDisplayBlocImpl _createDefaultArrivalDisplayBloc() {
-    final timeProvider = SystemTimeProvider();
-    final timeConverter = ArrivalTimeConverterImpl(timeProvider);
-    final bloc = ArrivalDisplayBlocImpl(
-        SystemTimeProvider(),
-        RouteArrivalFetcher(RouteArrivalParserImpl(timeConverter),
-            RemoteConfigImpl(), Client()));
-    return bloc;
-  }
+  ArrivalListView({Key key, @required this.bloc}) : super(key: key);
 
   @override
-  bool updateShouldNotify(InheritedWidget oldWidget) => true;
-}
-
-class ArrivalStateProvider extends InheritedWidget {
-  final ArrivalState state;
-
-  ArrivalStateProvider({Key key, Widget child, this.state})
-      : super(key: key, child: child);
-
-  @override
-  bool updateShouldNotify(InheritedWidget oldWidget) => true;
-
-  static ArrivalStateProvider of(BuildContext context) {
-    return context.inheritFromWidgetOfExactType(ArrivalStateProvider)
-        as ArrivalStateProvider;
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        StreamBuilder(
+            stream: bloc.arrivalsStream,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                final arrivals = snapshot.data as List<ArrivalUI>;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: arrivals.length,
+                        itemBuilder: (context, position) {
+                          final arrival = arrivals.elementAt(position);
+                          return Card(
+                            child: Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Text(
+                                    "${arrival.stationName} ${arrival.time1.value}",
+                                    style: TextStyle(fontSize: 14.0))),
+                          );
+                        }),
+                  ],
+                );
+              } else {
+                return Container();
+              }
+            }),
+        StreamBuilder(
+          stream: bloc.loadingStream,
+          builder: (context, snapshot) => Opacity(
+                opacity: snapshot.hasData ? (snapshot.data as bool) ? 1 : 0 : 0,
+                child: CircularProgressIndicator(),
+              ),
+        )
+      ],
+    );
   }
 }
