@@ -64,6 +64,8 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
 
   BehaviorSubject<_Action> _actionToggleSubject = BehaviorSubject<_Action>();
 
+  PublishSubject<ErrorUI> _errorStream = PublishSubject<ErrorUI>();
+
   @override
   void cancel() =>
       _actionCancelSubject.add(_Action.cancel(_timeProvider.timeMillis()));
@@ -88,41 +90,45 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
 
   @override
   Stream<List<ArrivalUI>> get arrivalsStream => _stateObservable
-      .map((s)=> s.toggleableRoute.getWay().arrivals)
+      .map((s) => s.toggleableRoute.getWay().arrivals)
       .distinct((prev, next) => ListEquality().equals(prev, next))
       .map((arrivals) => arrivals.map((a) {
-    //final now = _timeProvider.timeMillis();
-    //          final time1Diff = Duration(milliseconds: a.time.millis) -
+            //final now = _timeProvider.timeMillis();
+            //          final time1Diff = Duration(milliseconds: a.time.millis) -
 //                  Duration(milliseconds: now)
-    final time1 = TimeUI(
-        _arrivalTimeConverter.toReadableTime(a.time.millis, "HH:mm"));
+            final time1 = TimeUI(
+                _arrivalTimeConverter.toReadableTime(a.time.millis, "HH:mm"));
 
-    final time2 = a.time2 == null ? TimeUI.none : TimeUI(
-        _arrivalTimeConverter.toReadableTime(a.time2.millis, "HH:mm"));
-        return ArrivalUI(a.station.id, a.station.name, time1, time2);
-        }).toList());
+            final time2 = a.time2 == null
+                ? TimeUI.none
+                : TimeUI(_arrivalTimeConverter.toReadableTime(
+                    a.time2.millis, "HH:mm"));
+            return ArrivalUI(a.station.id, a.station.name, time1, time2);
+          }).toList());
 
   @override
-  Stream<ErrorUI> get errorStream => _stateObservable
-          .skipWhile((s) {
-            return s.flag != StateFlag.ERROR;
-          })
-          .map((s) => s.error)
-          .distinct()
-          .map((e) {
-        var msg;
-        if (e is CoolDownError) {
-          msg = "Wait ${e.remainingSeconds} seconds more and then try again";
-        } else if (e is ExceptionError) {
-          var exStr = e.exception.toString();
-          msg = exStr.substring(exStr.indexOf(" "));
-        } else if (e is MessageError) {
-          msg = e.message;
-        } else {
-          msg = e.toString();
-        }
-        return ErrorUI(msg);
-      });
+  Stream<ErrorUI> get errorStream => _errorStream.stream;
+
+  ErrorUI _errorMapper(dynamic e) {
+    var msg;
+    var retry = false;
+    if (e is CoolDownError) {
+      msg = "Wait ${e.remainingSeconds} seconds more and then try again";
+    } else if (e is ExceptionError) {
+      var exStr = e.exception.toString();
+      msg = exStr.substring(exStr.indexOf(":") + 1);
+      retry = true;
+    } else if (e is MessageError) {
+      msg = e.message;
+    } else if (e is Exception) {
+      var exStr = e.toString();
+      msg = exStr.substring(exStr.indexOf(":") + 1);
+      retry = true;
+    }else{
+      msg ="Unknown Error : $e";
+    }
+    return ErrorUI(msg, retry);
+  }
 
   @override
   Stream<bool> get loadingStream =>
@@ -156,21 +162,23 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       return Observable.fromFuture(
               _arrivalFetcher.getRouteArrivals(action.transporterId))
           .map((route) => ArrivalState.partialRoute(route))
-          .doOnError((_, __) {
+          .doOnError((e, __) {
+            _errorStream.add(_errorMapper(e));
             _actionLoadSubject.add(_Action.idle);
           })
-          .onErrorReturnWith((e) => ArrivalState.partialError(e))
+          .onErrorReturnWith((e) => ArrivalState.partialFlag(StateFlag.IDLE))
           .startWith(ArrivalState.partialFlag(StateFlag.LOADING))
           .takeUntil(_actionCancelSubject.stream
               .doOnData((_) => _actionLoadSubject.add(_Action.idle)));
     } else if (action is _ActionCoolDown) {
-      return Observable.just(
-          ArrivalState.partialError(CoolDownError(action.remainingSeconds)));
+      return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE)).doOnData(
+          (_) => _errorStream.add(ErrorUI(
+              "Wait ${action.remainingSeconds} seconds more and then try again")));
     } else if (action is _ActionToggle) {
       return Observable.just(ArrivalState.partialFlag(StateFlag.TOGGLE));
     } else {
-      return Observable.just(ArrivalState.partialError(
-          MessageError("Unprocessed action $action")));
+      return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE)).doOnData(
+          (_) => _errorStream.add(ErrorUI("Unprocessed action $action")));
     }
   }
 
@@ -178,18 +186,14 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
     ArrivalState state;
     switch (curr.flag) {
       case StateFlag.FINISHED:
-        state = ArrivalState(curr.toggleableRoute, curr.flag, null);
+        state = ArrivalState(curr.toggleableRoute, curr.flag);
         break;
       case StateFlag.IDLE:
       case StateFlag.LOADING:
-        state = ArrivalState(acc.toggleableRoute, curr.flag, null);
+        state = ArrivalState(acc.toggleableRoute, curr.flag);
         break;
       case StateFlag.TOGGLE:
-        state = ArrivalState(
-            acc.toggleableRoute.toggle(), StateFlag.FINISHED, null);
-        break;
-      case StateFlag.ERROR:
-        state = ArrivalState(acc.toggleableRoute, curr.flag, curr.error);
+        state = ArrivalState(acc.toggleableRoute.toggle(), StateFlag.FINISHED);
         break;
     }
     return state;
@@ -246,59 +250,42 @@ class ArrivalState {
       ToggleableRoute(Route(Way(List(), ""), Way(List(), "")));
 
   factory ArrivalState.partialRoute(Route route) =>
-      ArrivalState(ToggleableRoute(route), StateFlag.FINISHED, null);
+      ArrivalState(ToggleableRoute(route), StateFlag.FINISHED);
 
   factory ArrivalState.partialFlag(StateFlag flag) =>
-      ArrivalState(_emptyRoute, flag, null);
-
-  factory ArrivalState.partialError(dynamic error) {
-    Error err;
-    if (error is Error) {
-      err = error;
-    } else if (error is Exception) {
-      err = ExceptionError(error);
-    } else {
-      throw Exception("error must be eather an Error or an Exception");
-    }
-    return ArrivalState(null, StateFlag.ERROR, err);
-  }
+      ArrivalState(_emptyRoute, flag);
 
   ArrivalState nextRoute(ToggleableRoute route) =>
-      ArrivalState(route, this.flag, this.error);
+      ArrivalState(route, this.flag);
 
   ArrivalState nextFlag(StateFlag flag) =>
-      ArrivalState(this.toggleableRoute, flag, this.error);
+      ArrivalState(this.toggleableRoute, flag);
 
   ArrivalState nextError(Error error) =>
-      ArrivalState(this.toggleableRoute, this.flag, error);
+      ArrivalState(this.toggleableRoute, this.flag);
 
   final ToggleableRoute toggleableRoute;
 
   final StateFlag flag;
 
-  final Error error;
+  const ArrivalState([this.toggleableRoute, this.flag]);
 
-  const ArrivalState([this.toggleableRoute, this.flag, this.error]);
-
-  static ArrivalState defaultState =
-      ArrivalState(_emptyRoute, StateFlag.IDLE, null);
+  static ArrivalState defaultState = ArrivalState(_emptyRoute, StateFlag.IDLE);
 
   @override
   bool operator ==(other) =>
       other is ArrivalState &&
       this.flag == other.flag &&
-      this.error == other.error &&
       this.toggleableRoute == other.toggleableRoute;
 
   @override
-  int get hashCode => hashValues(toggleableRoute, flag, error);
+  int get hashCode => hashValues(toggleableRoute, flag);
 
   @override
-  String toString() =>
-      "ArrivalState[route:$toggleableRoute, flat:$flag, error:$error]";
+  String toString() => "ArrivalState[route:$toggleableRoute, flat:$flag]";
 }
 
-enum StateFlag { IDLE, LOADING, FINISHED, TOGGLE, ERROR }
+enum StateFlag { IDLE, LOADING, FINISHED, TOGGLE }
 
 @immutable
 class ToggleableRoute {

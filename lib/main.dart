@@ -48,32 +48,32 @@ class ArrivalDisplayWidgetState extends State<ArrivalDisplayWidget> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _bloc.load(widget.transporterId);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         Row(
           children: <Widget>[
-            RaisedButton(
-              child: const Text('Refresh'),
+            IconButton(
+              icon: Icon(Icons.refresh),
               onPressed: () => _bloc.load(widget.transporterId),
             ),
-            RaisedButton(
-              child: const Text('Switch Way'),
+            IconButton(
+              icon: Icon(Icons.timeline),
               onPressed: () => _bloc.toggleWay(),
             ),
+            StreamBuilder(
+              stream: _bloc.wayNameStream,
+              builder: (context, snapshot) => snapshot.hasData
+                  ? Expanded(child: Center(child: Text(snapshot.data)))
+                  : Container(),
+            ),
           ],
-        ),
-        StreamBuilder(
-          stream: _bloc.wayNameStream,
-          builder: (context, snapshot) =>
-              snapshot.hasData ? Text(snapshot.data) : Container(),
         ),
         ArrivalListView(
           bloc: _bloc,
@@ -89,7 +89,12 @@ class ArrivalDisplayWidgetState extends State<ArrivalDisplayWidget> {
       Scaffold.of(context).hideCurrentSnackBar();
       Scaffold.of(context).showSnackBar(SnackBar(
         content: Text(e.message),
-        duration: Duration(seconds: 3),
+        duration: Duration(seconds: e.canRetry ? 3600 : 3),
+        action: e.canRetry
+            ? SnackBarAction(
+                label: "RETRY",
+                onPressed: () => _bloc.load(widget.transporterId))
+            : null,
       ));
     });
   }
@@ -108,43 +113,41 @@ class ArrivalListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        StreamBuilder(
-            stream: bloc.arrivalsStream,
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                final arrivals = snapshot.data as List<ArrivalUI>;
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: arrivals.length,
-                        itemBuilder: (context, position) {
-                          final arrival = arrivals.elementAt(position);
-                          return Card(
-                            child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Text(
-                                    "${arrival.stationName} ${arrival.time1.value}",
-                                    style: TextStyle(fontSize: 14.0))),
-                          );
-                        }),
-                  ],
-                );
-              } else {
-                return Container();
-              }
-            }),
-        StreamBuilder(
-          stream: bloc.loadingStream,
-          builder: (context, snapshot) => Opacity(
-                opacity: snapshot.hasData ? (snapshot.data as bool) ? 1 : 0 : 0,
-                child: CircularProgressIndicator(),
-              ),
-        )
-      ],
+    return Expanded(
+      child: Stack(
+        children: [
+          StreamBuilder(
+              stream: bloc.arrivalsStream,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  final arrivals = snapshot.data as List<ArrivalUI>;
+                  return ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: arrivals.length,
+                      itemBuilder: (context, position) {
+                        final arrival = arrivals.elementAt(position);
+                        return Card(
+                          child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Text(
+                                  "${arrival.stationName} ${arrival.time1.value}",
+                                  style: TextStyle(fontSize: 14.0))),
+                        );
+                      });
+                } else {
+                  return Container();
+                }
+              }),
+          StreamBuilder(
+            stream: bloc.loadingStream,
+            builder: (context, snapshot) => Opacity(
+                  opacity:
+                      snapshot.hasData ? (snapshot.data as bool) ? 1 : 0 : 0,
+                  child: Align(child: CircularProgressIndicator()),
+                ),
+          )
+        ],
+      ),
     );
   }
 }
