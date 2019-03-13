@@ -1,5 +1,10 @@
+import 'dart:ui';
+
+import 'package:meta/meta.dart';
+
 enum TransporterType { tram, trolley, bus, boat }
 
+@immutable
 class Transporter {
   final int id;
 
@@ -7,5 +12,22 @@ class Transporter {
 
   final TransporterType type;
 
-  const Transporter(this.id, this.name, this.type);
+  final bool isFavorite;
+
+  const Transporter(this.id, this.name, this.type, [this.isFavorite = false]);
+
+  @override
+  String toString() =>
+      "Transporter[id:$id, name:$name, type:$type, favorite:$isFavorite]";
+
+  @override
+  int get hashCode => hashValues(id, name, type, isFavorite);
+
+  @override
+  bool operator ==(other) =>
+      other is Transporter &&
+      id == other.id &&
+      name == other.name &&
+      type == other.type &&
+      isFavorite == other.isFavorite;
 }

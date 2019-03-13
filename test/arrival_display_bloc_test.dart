@@ -27,8 +27,8 @@ void main() {
   setUp(() {
     timeline = TimelineTimeProvider();
     fetcher = MockRouteArrivalFetcher();
-    bloc = blc.ArrivalDisplayBlocImpl(timeline, MockArrivalTimeConverter(),
-        TimeUIConverterImpl(), fetcher);
+    bloc = blc.ArrivalDisplayBlocImpl(timeline, TimeUIConverterImpl(), fetcher,
+        MockRestoringCoolDownManager());
     queue = StreamQueue(bloc.streamState);
     errQueue = StreamQueue(bloc.errorStream);
     state = blc.ArrivalState.defaultState;
@@ -71,8 +71,8 @@ void main() {
     });
 
     state = state.nextFlag(blc.StateFlag.FINISHED).nextRoute(toggleableRoute);
-    bloc = blc.ArrivalDisplayBlocImpl(timeline, MockArrivalTimeConverter(),
-        TimeUIConverterImpl(), fetcher, state);
+    bloc = blc.ArrivalDisplayBlocImpl(timeline, TimeUIConverterImpl(), fetcher,
+        MockRestoringCoolDownManager(), state);
     queue = StreamQueue(bloc.streamState);
     bloc.toggleWay();
     await queue.next;
