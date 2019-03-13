@@ -27,7 +27,6 @@ class Arrival {
   @override
   String toString() => "Arrival:[station: $station, time1:$time, time2:$time2]";
 
-
 }
 
 @immutable

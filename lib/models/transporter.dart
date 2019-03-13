@@ -1,9 +1,11 @@
-enum Type { tram, trolley, bus, boat }
+enum TransporterType { tram, trolley, bus, boat }
 
 class Transporter {
   final int id;
 
-  final Type type;
+  final String name;
 
-  const Transporter(this.id, this.type);
+  final TransporterType type;
+
+  const Transporter(this.id, this.name, this.type);
 }

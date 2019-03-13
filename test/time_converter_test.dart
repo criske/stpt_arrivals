@@ -20,14 +20,15 @@ void main() {
   });
 
   test("should get time when ':' time format is provided", () {
-    final formatted = converter.toReadableTime(
+    var formatted = converter.toReadableTime(
         converter.toTimeMillis("19:00"), format.pattern);
     expect(formatted, "2019-03-07 19:00");
   });
 
   test("should get time when '.min' time format is provided", () {
-    var formatted = converter.toReadableTime(
-        converter.toTimeMillis("6 min."), format.pattern);
+    var time = converter.toTime("6 min.");
+    var formatted = converter.toReadableTime(time.millis, format.pattern);
+    expect(time.isInProximity, true);
     expect(formatted, "2019-03-07 17:06");
     formatted = converter.toReadableTime(
         converter.toTimeMillis("66 min."), format.pattern);

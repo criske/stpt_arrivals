@@ -1,5 +1,9 @@
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
+
+
+
 class ErrorUI extends Error {
   final String message;
   final bool canRetry;
@@ -19,9 +23,9 @@ class ArrivalUI {
 
 class TimeUI {
   final String value;
-  final Color color;
+  final int color;
 
-  const TimeUI(this.value, [this.color = const Color(0x0)]);
+  const TimeUI(this.value, [this.color = 0xFF000000]);
 
-  static TimeUI none = TimeUI("**:**");
+  factory TimeUI.none([String nonValue = "**:**"]) => TimeUI(nonValue);
 }

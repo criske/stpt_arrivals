@@ -7,7 +7,9 @@ import 'package:rxdart/rxdart.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
 import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/presentation/arrival_ui.dart';
+import 'package:stpt_arrivals/presentation/time_ui_converter.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
+import 'package:stpt_arrivals/services/restoring_cooldown_manager.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 
 abstract class ArrivalDisplayBloc implements DisposableBloc {
@@ -37,20 +39,37 @@ abstract class DisposableBloc {
 class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   TimeProvider _timeProvider;
 
-  ArrivalTimeConverter _arrivalTimeConverter;
+  TimeUIConverter _timeUIConverter;
 
   RouteArrivalFetcher _arrivalFetcher;
+
+  RestoringCoolDownManager _coolDownManager;
 
   ArrivalState _initialState;
 
   Observable<ArrivalState> _stateObservable;
 
-  ArrivalDisplayBlocImpl(
-      this._timeProvider, this._arrivalTimeConverter, this._arrivalFetcher,
+  ArrivalDisplayBlocImpl(this._timeProvider, this._timeUIConverter,
+      this._arrivalFetcher, this._coolDownManager,
       [this._initialState]) {
-    var loadStream =
-        _actionLoadSubject.stream.scan(_coolDownController, _Action.idle);
+    final loadStream =
+        Observable.fromFuture(_coolDownManager.loadLastCoolDown())
+            .map((time) {
+              final timeDiff = ArrivalDisplayBloc.coolDownThreshold.inSeconds -
+                  (Duration(milliseconds: _timeProvider.timeMillis()) -
+                          Duration(milliseconds: time))
+                      .inSeconds;
+              if (timeDiff <= 0) {
+                return _Action.idle;
+              } else {
+                return _ActionCoolDown(time, timeDiff);
+              }
+            })
+            .cast<_Action>()
+            .concatWith([_actionLoadSubject.stream])
+            .scan(_coolDownController, _Action.idle);
     var toggleStream = _actionToggleSubject.stream;
+
     _stateObservable = Observable.merge([loadStream, toggleStream])
         .flatMap(_actionController)
         .scan(_stateReducer, _initialState ?? ArrivalState.defaultState)
@@ -93,17 +112,9 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       .map((s) => s.toggleableRoute.getWay().arrivals)
       .distinct((prev, next) => ListEquality().equals(prev, next))
       .map((arrivals) => arrivals.map((a) {
-            //final now = _timeProvider.timeMillis();
-            //          final time1Diff = Duration(milliseconds: a.time.millis) -
-//                  Duration(milliseconds: now)
-            final time1 = TimeUI(
-                _arrivalTimeConverter.toReadableTime(a.time.millis, "HH:mm"));
-
-            final time2 = a.time2 == null
-                ? TimeUI.none
-                : TimeUI(_arrivalTimeConverter.toReadableTime(
-                    a.time2.millis, "HH:mm"));
-            return ArrivalUI(a.station.id, a.station.name, time1, time2);
+            final timeUI1 = _timeUIConverter.toUI(a.time);
+            final timeUI2 = _timeUIConverter.toUI(a.time2);
+            return ArrivalUI(a.station.id, a.station.name, timeUI1, timeUI2);
           }).toList());
 
   @override
@@ -113,19 +124,19 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
     var msg;
     var retry = false;
     if (e is CoolDownError) {
-      msg = "Wait ${e.remainingSeconds} seconds more and then try again";
+      msg = "Wait ${e.remainingSeconds} more seconds and try again";
     } else if (e is ExceptionError) {
       var exStr = e.exception.toString();
-      msg = exStr.substring(exStr.indexOf(":") + 1);
+      msg = exStr.substring(exStr.indexOf(":") + 1).trim();
       retry = true;
     } else if (e is MessageError) {
       msg = e.message;
     } else if (e is Exception) {
       var exStr = e.toString();
-      msg = exStr.substring(exStr.indexOf(":") + 1);
+      msg = exStr.substring(exStr.indexOf(":") + 1).trim();
       retry = true;
-    }else{
-      msg ="Unknown Error : $e";
+    } else {
+      msg = "Unknown Error : $e";
     }
     return ErrorUI(msg, retry);
   }
@@ -139,7 +150,7 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       _stateObservable.map((s) => s.toggleableRoute.getWay().name).distinct();
 
   _Action _coolDownController(acc, curr, _) {
-    if (acc is _ActionIdle || curr is _ActionIdle) {
+    if (acc is _ActionIdle || curr is _ActionIdle || curr is _ActionCoolDown) {
       return curr;
     } else {
       final timeDiff =
@@ -162,6 +173,9 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       return Observable.fromFuture(
               _arrivalFetcher.getRouteArrivals(action.transporterId))
           .map((route) => ArrivalState.partialRoute(route))
+          .flatMap((state) => Observable.fromFuture(
+                  _coolDownManager.retainLastCoolDown(action.time))
+              .map((_) => state))
           .doOnError((e, __) {
             _errorStream.add(_errorMapper(e));
             _actionLoadSubject.add(_Action.idle);
@@ -173,7 +187,7 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
     } else if (action is _ActionCoolDown) {
       return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE)).doOnData(
           (_) => _errorStream.add(ErrorUI(
-              "Wait ${action.remainingSeconds} seconds more and then try again")));
+              "Wait ${action.remainingSeconds} more seconds and then try again")));
     } else if (action is _ActionToggle) {
       return Observable.just(ArrivalState.partialFlag(StateFlag.TOGGLE));
     } else {

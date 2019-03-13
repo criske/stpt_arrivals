@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:async/async.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
-import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/presentation/arrival_display_bloc.dart' as blc;
 import 'package:stpt_arrivals/presentation/arrival_ui.dart';
+import 'package:stpt_arrivals/presentation/time_ui_converter.dart';
 import 'package:test_api/test_api.dart';
 
 import 'mocks.dart';
@@ -22,13 +22,13 @@ void main() {
   Route route = Route(Way(List(), "Way1"), Way(List(), "Way2"));
   blc.ToggleableRoute toggleableRoute = blc.ToggleableRoute(route);
 
-
   Future<String> nextErrMessage() async => (await errQueue.next).message;
 
   setUp(() {
     timeline = TimelineTimeProvider();
     fetcher = MockRouteArrivalFetcher();
-    bloc = blc.ArrivalDisplayBlocImpl(timeline, MockArrivalTimeConverter(), fetcher);
+    bloc = blc.ArrivalDisplayBlocImpl(timeline, MockArrivalTimeConverter(),
+        TimeUIConverterImpl(), fetcher);
     queue = StreamQueue(bloc.streamState);
     errQueue = StreamQueue(bloc.errorStream);
     state = blc.ArrivalState.defaultState;
@@ -55,9 +55,7 @@ void main() {
     await queue.next;
     timeline.advance(Duration(seconds: 3));
     bloc.load(100);
-    state = state
-        .nextRoute(toggleableRoute)
-        .nextFlag(blc.StateFlag.IDLE);
+    state = state.nextRoute(toggleableRoute).nextFlag(blc.StateFlag.IDLE);
     expect(await queue.next, state);
     //expect((await errQueue.next).message, "Wait 27 seconds more and then try again");
     timeline.advance(Duration(seconds: 60));
@@ -73,7 +71,8 @@ void main() {
     });
 
     state = state.nextFlag(blc.StateFlag.FINISHED).nextRoute(toggleableRoute);
-    bloc = blc.ArrivalDisplayBlocImpl(timeline, MockArrivalTimeConverter(), fetcher, state);
+    bloc = blc.ArrivalDisplayBlocImpl(timeline, MockArrivalTimeConverter(),
+        TimeUIConverterImpl(), fetcher, state);
     queue = StreamQueue(bloc.streamState);
     bloc.toggleWay();
     await queue.next;

@@ -30,4 +30,7 @@ class TimelineTimeProvider implements TimeProvider {
   void advance(Duration duration) {
     _timeline = _timeline.add(duration);
   }
+
+  Duration diff(DateTime date) =>
+      Duration(milliseconds: timeMillis()) - Duration(milliseconds: date.millisecondsSinceEpoch);
 }

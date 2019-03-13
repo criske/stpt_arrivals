@@ -28,10 +28,10 @@ class RouteArrivalParserImpl implements RouteArrivalParser {
       final isWay = t.attributes.containsKey("style");
       if (isWay) {
         if (wayCount == 0) {
-          way1 = Way(List<Arrival>(), _extractTextFromColumn(t, 0));
+          way1 = Way(List<Arrival>(), _extractTextFromColumn(t, 0).split("spre")[1].trim());
           currentWay = way1;
         } else {
-          way2 = Way(List<Arrival>(), _extractTextFromColumn(t, 0));
+          way2 = Way(List<Arrival>(), _extractTextFromColumn(t, 0).split("spre")[1].trim());
           currentWay = way2;
         }
         wayCount++;
@@ -41,7 +41,10 @@ class RouteArrivalParserImpl implements RouteArrivalParser {
         currentWay.arrivals.add(arrival);
       }
     });
-    return Route(way1, way2);
+
+    final way1PrettyDir = "${way2.name}\u{2192}${way1.name}";
+    final way2PrettyDir = "${way1.name}\u{2192}${way2.name}";
+    return Route(Way(way1.arrivals, way1PrettyDir), Way(way2.arrivals, way2PrettyDir));
   }
 
   bool _isHeader(Element t) => _extractTextFromColumn(t, 1).trim() == "Sosire";

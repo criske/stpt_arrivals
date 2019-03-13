@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
+import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/arrival_display_bloc.dart';
 import 'package:stpt_arrivals/presentation/arrival_ui.dart';
+import 'package:stpt_arrivals/presentation/time_ui_converter.dart';
 import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/remote_config.dart';
+import 'package:stpt_arrivals/services/restoring_cooldown_manager.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 
 void main() => runApp(new MyApp());
@@ -16,19 +19,21 @@ class MyApp extends StatelessWidget {
     return new MaterialApp(
         title: 'Flutter Demo',
         theme: new ThemeData(
-          primarySwatch: Colors.blue,
+          primarySwatch: Colors.amber,
         ),
         debugShowCheckedModeBanner: false,
-        home: Scaffold(
-            appBar: AppBar(title: Text("RATT Arrivals")),
-            body: ArrivalDisplayWidget(886)));
+        home: SafeArea(
+          child: Scaffold(
+              body: ArrivalDisplayWidget(
+                  Transporter(886, "40", TransporterType.bus))),
+        ));
   }
 }
 
 class ArrivalDisplayWidget extends StatefulWidget {
-  final transporterId;
+  final Transporter transporter;
 
-  ArrivalDisplayWidget(this.transporterId, {Key key}) : super(key: key);
+  ArrivalDisplayWidget(this.transporter, {Key key}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => ArrivalDisplayWidgetState();
@@ -42,38 +47,60 @@ class ArrivalDisplayWidgetState extends State<ArrivalDisplayWidget> {
     final timeConverter = ArrivalTimeConverterImpl(timeProvider);
     _bloc = ArrivalDisplayBlocImpl(
         SystemTimeProvider(),
-        timeConverter,
+        TimeUIConverterImpl(),
         RouteArrivalFetcher(RouteArrivalParserImpl(timeConverter),
-            RemoteConfigImpl(), Client()));
+            RemoteConfigImpl(), Client()),
+        RestoringCoolDownManagerImpl()
+    );
   }
 
   @override
   void initState() {
     super.initState();
-    _bloc.load(widget.transporterId);
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      _bloc.load(widget.transporter.id);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            IconButton(
-              icon: Icon(Icons.refresh),
-              onPressed: () => _bloc.load(widget.transporterId),
+        Material(
+          elevation: 2,
+          child: Container(
+            height: 56,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Container(
+                  margin: EdgeInsets.only(left: 16),
+                  padding: EdgeInsets.all(8),
+                  child: Text(widget.transporter.name,
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                  decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.all(Radius.circular(5.0))),
+                ),
+                StreamBuilder(
+                  stream: _bloc.wayNameStream,
+                  builder: (context, snapshot) =>
+                      Expanded(child: Center(child: Text(snapshot.hasData ? snapshot.data :"??\u{2192}??"))),
+                ),
+                IconButton(
+                  icon: Icon(Icons.timeline),
+                  onPressed: () => _bloc.toggleWay(),
+                ),
+                IconButton(
+                  icon: Icon(Icons.refresh),
+                  onPressed: () => _bloc.load(widget.transporter.id),
+                ),
+              ],
             ),
-            IconButton(
-              icon: Icon(Icons.timeline),
-              onPressed: () => _bloc.toggleWay(),
-            ),
-            StreamBuilder(
-              stream: _bloc.wayNameStream,
-              builder: (context, snapshot) => snapshot.hasData
-                  ? Expanded(child: Center(child: Text(snapshot.data)))
-                  : Container(),
-            ),
-          ],
+          ),
         ),
         ArrivalListView(
           bloc: _bloc,
@@ -88,15 +115,21 @@ class ArrivalDisplayWidgetState extends State<ArrivalDisplayWidget> {
     _bloc.errorStream.listen((e) {
       Scaffold.of(context).hideCurrentSnackBar();
       Scaffold.of(context).showSnackBar(SnackBar(
-        content: Text(e.message),
-        duration: Duration(seconds: e.canRetry ? 3600 : 3),
+        content: Padding(child: Text(e.message), padding: EdgeInsets.only(top: 24, bottom: 24),),
+        duration: Duration(seconds: e.canRetry ? 15 : 3),
         action: e.canRetry
             ? SnackBarAction(
                 label: "RETRY",
-                onPressed: () => _bloc.load(widget.transporterId))
+                onPressed: () => _bloc.load(widget.transporter.id))
             : null,
       ));
     });
+  }
+
+  @override
+  void deactivate() {
+    super.deactivate();
+    _bloc.dispose();
   }
 
   @override
@@ -122,17 +155,22 @@ class ArrivalListView extends StatelessWidget {
                 if (snapshot.hasData) {
                   final arrivals = snapshot.data as List<ArrivalUI>;
                   return ListView.builder(
-                      shrinkWrap: true,
                       itemCount: arrivals.length,
                       itemBuilder: (context, position) {
                         final arrival = arrivals.elementAt(position);
-                        return Card(
-                          child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Text(
-                                  "${arrival.stationName} ${arrival.time1.value}",
-                                  style: TextStyle(fontSize: 14.0))),
-                        );
+                        return Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Text("${arrival.stationName}",
+                                    style: TextStyle(fontSize: 14.0)),
+                                Text("${arrival.time1.value}",
+                                    style: TextStyle(
+                                        fontSize: 14.0,
+                                        color: Color(arrival.time1.color))),
+                              ],
+                            ));
                       });
                 } else {
                   return Container();
