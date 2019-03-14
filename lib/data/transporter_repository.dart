@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:meta/meta.dart';
+import 'package:stpt_arrivals/data/favorites_data_source.dart';
 import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 
@@ -18,13 +20,27 @@ abstract class TransporterRepository {
 class TransporterRepositoryImpl implements TransporterRepository {
   List<Transporter> _transporters = List<Transporter>();
 
-  TransporterRepositoryImpl();
+  FavoritesDataSource _favoritesDataSource;
 
-  TransporterRepositoryImpl.withData(List<Transporter> data)
-      : _transporters = data.toList();
+  TransporterRepositoryImpl(this._favoritesDataSource);
+
+  bool _isSynced = false;
+
+  TransporterRepositoryImpl.withData(FavoritesDataSource favDs, List<Transporter> data)
+      : _transporters = data.toList(),
+        _favoritesDataSource = favDs;
 
   @override
   Future<List<Transporter>> findAll() async {
+    if (!_isSynced) {
+      final favIds = await _favoritesDataSource.getAll();
+      final updatedTransporters = List<Transporter>();
+      _transporters.forEach((t) {
+        updatedTransporters.add(favIds.contains(t.id) ? t.favorite(true) : t);
+      });
+      _isSynced = true;
+      _transporters = updatedTransporters;
+    }
     return List.unmodifiable(_transporters);
   }
 
@@ -62,6 +78,14 @@ class TransporterRepositoryImpl implements TransporterRepository {
   Future<void> update(Transporter transporter) async {
     final index = _transporters.indexWhere((t) => t.id == transporter.id);
     if (index == -1) throw MessageError("Transporter not found");
+    final oldTransporter = _transporters[index];
+    if (oldTransporter.isFavorite != transporter.isFavorite) {
+      if (transporter.isFavorite) {
+        await _favoritesDataSource.insert(transporter.id);
+      } else {
+        await _favoritesDataSource.delete(transporter.id);
+      }
+    }
     _transporters.removeAt(index);
     _transporters.insert(index, transporter);
   }

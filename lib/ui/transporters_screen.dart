@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:stpt_arrivals/data/favorites_data_source.dart';
 import 'package:stpt_arrivals/data/transporter_repository.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/transporters/transporters_bloc.dart';
@@ -18,7 +19,8 @@ class _TransportersScreenState extends State<TransportersScreen> {
   var _selectedDropFilter = PrettyTransporterBlocFilter();
 
   _TransportersScreenState() {
-    _bloc = TransportersBlocImpl(TransporterRepositoryImpl.withData([
+    _bloc = TransportersBlocImpl(TransporterRepositoryImpl
+        .withData(FavoritesDataSourceImpl(), [
       Transporter(886, "40", TransporterType.bus),
       Transporter(1551, "E2", TransporterType.bus),
       Transporter(1550, "E1", TransporterType.bus),
@@ -108,7 +110,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
                             .toList(),
                       );
                     } else {
-                      return CircularProgressIndicator();
+                      return Center(child: CircularProgressIndicator());
                     }
                   }),
             ),

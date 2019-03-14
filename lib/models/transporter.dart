@@ -18,6 +18,8 @@ class Transporter {
 
   Transporter toggleFavorite() => Transporter(id, name, type, !isFavorite);
 
+  Transporter favorite(bool newFavorite) => Transporter(id, name, type, newFavorite);
+
   @override
   String toString() =>
       "Transporter[id:$id, name:$name, type:$type, favorite:$isFavorite]";
