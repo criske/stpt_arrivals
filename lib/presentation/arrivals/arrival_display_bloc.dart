@@ -6,8 +6,9 @@ import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
 import 'package:stpt_arrivals/models/error.dart';
-import 'package:stpt_arrivals/presentation/arrival_ui.dart';
-import 'package:stpt_arrivals/presentation/time_ui_converter.dart';
+import 'package:stpt_arrivals/presentation/arrivals/arrival_ui.dart';
+import 'package:stpt_arrivals/presentation/arrivals/time_ui_converter.dart';
+import 'package:stpt_arrivals/presentation/disposable_bloc.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/restoring_cooldown_manager.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
@@ -32,9 +33,6 @@ abstract class ArrivalDisplayBloc implements DisposableBloc {
   void toggleWay();
 }
 
-abstract class DisposableBloc {
-  void dispose();
-}
 
 class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   TimeProvider _timeProvider;
@@ -128,9 +126,10 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
     } else if (e is ExceptionError) {
       var exStr = e.exception.toString();
       msg = exStr.substring(exStr.indexOf(":") + 1).trim();
-      retry = true;
+      retry = e.canRetry;
     } else if (e is MessageError) {
       msg = e.message;
+      retry = e.canRetry;
     } else if (e is Exception) {
       var exStr = e.toString();
       msg = exStr.substring(exStr.indexOf(":") + 1).trim();

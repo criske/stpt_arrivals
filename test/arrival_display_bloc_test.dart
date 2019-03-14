@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:async/async.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
-import 'package:stpt_arrivals/presentation/arrival_display_bloc.dart' as blc;
-import 'package:stpt_arrivals/presentation/arrival_ui.dart';
-import 'package:stpt_arrivals/presentation/time_ui_converter.dart';
+import 'package:stpt_arrivals/presentation/arrivals/arrival_display_bloc.dart' as blc;
+import 'package:stpt_arrivals/presentation/arrivals/arrival_ui.dart';
+import 'package:stpt_arrivals/presentation/arrivals/time_ui_converter.dart';
 import 'package:test_api/test_api.dart';
 
 import 'mocks.dart';

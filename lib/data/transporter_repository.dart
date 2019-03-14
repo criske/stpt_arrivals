@@ -18,6 +18,11 @@ abstract class TransporterRepository {
 class TransporterRepositoryImpl implements TransporterRepository {
   List<Transporter> _transporters = List<Transporter>();
 
+  TransporterRepositoryImpl();
+
+  TransporterRepositoryImpl.withData(List<Transporter> data)
+      : _transporters = data.toList();
+
   @override
   Future<List<Transporter>> findAll() async {
     return List.unmodifiable(_transporters);
@@ -25,12 +30,26 @@ class TransporterRepositoryImpl implements TransporterRepository {
 
   @override
   Future<List<Transporter>> findAllByFavorites() async {
-    return _transporters.takeWhile((t) => t.isFavorite).toList();
+    //todo takeWhile not working?
+    final out = List<Transporter>();
+    _transporters.forEach((t) {
+      if (t.isFavorite) {
+        out.add(t);
+      }
+    });
+    return out;
   }
 
   @override
   Future<List<Transporter>> findAllByType(TransporterType type) async {
-    return _transporters.takeWhile((t) => t.type == type).toList();
+    //todo takeWhile not working?
+    final out = List<Transporter>();
+    _transporters.forEach((t) {
+      if (t.type == type) {
+        out.add(t);
+      }
+    });
+    return out;
   }
 
   @override
@@ -42,8 +61,8 @@ class TransporterRepositoryImpl implements TransporterRepository {
   @override
   Future<void> update(Transporter transporter) async {
     final index = _transporters.indexWhere((t) => t.id == transporter.id);
-    if(index == -1)
-      throw MessageError("Transporter not found");
-    _transporters.replaceRange(index, index, [transporter]);
+    if (index == -1) throw MessageError("Transporter not found");
+    _transporters.removeAt(index);
+    _transporters.insert(index, transporter);
   }
 }

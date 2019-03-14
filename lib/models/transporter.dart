@@ -16,6 +16,8 @@ class Transporter {
 
   const Transporter(this.id, this.name, this.type, [this.isFavorite = false]);
 
+  Transporter toggleFavorite() => Transporter(id, name, type, !isFavorite);
+
   @override
   String toString() =>
       "Transporter[id:$id, name:$name, type:$type, favorite:$isFavorite]";

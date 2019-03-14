@@ -33,6 +33,7 @@ void main() {
   test("should get all transporters by fav", () async {
     await repository.update(Transporter(1, "1", TransporterType.bus, true));
     final all = await repository.findAllByFavorites();
+    expect((await repository.findAll()).length, 4);
     expect(all, [Transporter(1, "1", TransporterType.bus, true)]);
   });
 

@@ -1,4 +1,4 @@
-import 'package:stpt_arrivals/presentation/time_ui_converter.dart';
+import 'package:stpt_arrivals/presentation/arrivals/time_ui_converter.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:test_api/test_api.dart';
 

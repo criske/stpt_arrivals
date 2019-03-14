@@ -1,5 +1,5 @@
 import 'package:intl/intl.dart';
-import 'package:stpt_arrivals/presentation/arrival_ui.dart';
+import 'package:stpt_arrivals/presentation/arrivals/arrival_ui.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 
 abstract class TimeUIConverter {
