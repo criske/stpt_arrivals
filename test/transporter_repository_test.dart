@@ -1,14 +1,14 @@
-import 'package:stpt_arrivals/data/transporter_repository.dart';
+import 'package:stpt_arrivals/data/transporters_repository.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:test_api/test_api.dart';
 
 import 'mocks.dart';
 
 void main() {
-  TransporterRepository repository;
+  TransportersRepository repository;
 
   setUp(() async {
-    repository = TransporterRepositoryImpl(MockFavoritesDataSource());
+    repository = TransportersRepositoryImpl(MockFavoritesDataSource());
     await repository.save([
       Transporter("1", "1", TransporterType.bus),
       Transporter("2", "2", TransporterType.tram),

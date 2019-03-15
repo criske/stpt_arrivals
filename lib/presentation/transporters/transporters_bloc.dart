@@ -1,5 +1,5 @@
 import 'package:rxdart/rxdart.dart';
-import 'package:stpt_arrivals/data/transporter_repository.dart';
+import 'package:stpt_arrivals/data/transporters_repository.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/disposable_bloc.dart';
 
@@ -55,7 +55,7 @@ class TransportersBlocImpl implements TransportersBloc {
   BehaviorSubject<PrettyTransporterBlocFilter> _selectedFilterSubject = BehaviorSubject()
     ..add(PrettyTransporterBlocFilter(TransporterBlocFilter.ALL));
 
-  TransporterRepository _repository;
+  TransportersRepository _repository;
 
   TransportersBlocImpl(this._repository);
 

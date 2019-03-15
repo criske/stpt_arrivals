@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:stpt_arrivals/data/favorites_data_source.dart';
-import 'package:stpt_arrivals/data/transporter_repository.dart';
+import 'package:stpt_arrivals/data/transporters_repository.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/transporters/transporters_bloc.dart';
 import 'package:stpt_arrivals/ui/arrival_display_screen.dart';
@@ -20,7 +20,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
 
   _TransportersScreenState() {
     _bloc = TransportersBlocImpl(
-        TransporterRepositoryImpl.withData(FavoritesDataSourceImpl(), [
+        TransportersRepositoryImpl.withData(FavoritesDataSourceImpl(), [
       Transporter("886", "40", TransporterType.bus),
       Transporter("1551", "E2", TransporterType.bus),
       Transporter("1550", "E1", TransporterType.bus),

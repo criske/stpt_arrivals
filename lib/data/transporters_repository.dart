@@ -5,7 +5,7 @@ import 'package:stpt_arrivals/data/favorites_data_source.dart';
 import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 
-abstract class TransporterRepository {
+abstract class TransportersRepository {
   Future<List<Transporter>> findAll();
 
   Future<List<Transporter>> findAllByType(TransporterType type);
@@ -17,21 +17,27 @@ abstract class TransporterRepository {
   Future<void> update(Transporter transporter);
 }
 
-class TransporterRepositoryImpl implements TransporterRepository {
+class TransportersRepositoryImpl implements TransportersRepository {
+
   List<Transporter> _transporters = List<Transporter>();
 
   FavoritesDataSource _favoritesDataSource;
 
-  TransporterRepositoryImpl(this._favoritesDataSource);
+  TransportersRepositoryImpl(this._favoritesDataSource);
 
   bool _isSynced = false;
 
-  TransporterRepositoryImpl.withData(FavoritesDataSource favDs, List<Transporter> data)
+  TransportersRepositoryImpl.withData(
+      FavoritesDataSource favDs,
+      List<Transporter> data)
       : _transporters = data.toList(),
         _favoritesDataSource = favDs;
 
   @override
   Future<List<Transporter>> findAll() async {
+    if(_transporters.isEmpty){
+      _transporters =
+    }
     if (!_isSynced) {
       final favIds = await _favoritesDataSource.getAll();
       final updatedTransporters = List<Transporter>();
