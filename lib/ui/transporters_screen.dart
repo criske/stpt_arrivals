@@ -62,7 +62,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
                               stream: _bloc.loadingStream,
                               builder: (context, snapshot) {
                                 final enabled =
-                                    snapshot.hasData ? snapshot.data : false;
+                                    snapshot.hasData ? !snapshot.data : false;
                                 return DropdownButton<
                                         PrettyTransporterBlocFilter>(
                                     isExpanded: true,
@@ -98,24 +98,26 @@ class _TransportersScreenState extends State<TransportersScreen> {
                       stream: _bloc.transportersStream,
                       builder: (context, snapshot) {
                         if (snapshot.hasData) {
-                          return Wrap(
-                            runSpacing: 4,
-                            spacing: 4,
-                            children: snapshot.data
-                                .map((t) => _TransporterWidget(
-                                      transporter: t,
-                                      onSelect: (t) {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    ArrivalDisplayScreen(t)));
-                                      },
-                                      onFavorite: (t) {
-                                        _bloc.update(t);
-                                      },
-                                    ))
-                                .toList(),
+                          return SingleChildScrollView(
+                            child: Wrap(
+                              runSpacing: 4,
+                              spacing: 4,
+                              children: snapshot.data
+                                  .map((t) => _TransporterWidget(
+                                        transporter: t,
+                                        onSelect: (t) {
+                                          Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      ArrivalDisplayScreen(t)));
+                                        },
+                                        onFavorite: (t) {
+                                          _bloc.update(t);
+                                        },
+                                      ))
+                                  .toList(),
+                            ),
                           );
                         } else {
                           return Center(child: CircularProgressIndicator());
