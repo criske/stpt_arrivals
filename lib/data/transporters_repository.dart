@@ -1,9 +1,10 @@
 import 'dart:async';
 
-import 'package:meta/meta.dart';
 import 'package:stpt_arrivals/data/favorites_data_source.dart';
+import 'package:stpt_arrivals/data/transporters_data_source.dart';
 import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
+import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
 
 abstract class TransportersRepository {
   Future<List<Transporter>> findAll();
@@ -18,25 +19,43 @@ abstract class TransportersRepository {
 }
 
 class TransportersRepositoryImpl implements TransportersRepository {
-
   List<Transporter> _transporters = List<Transporter>();
 
   FavoritesDataSource _favoritesDataSource;
 
-  TransportersRepositoryImpl(this._favoritesDataSource);
+  TransportersDataSource _transportersDataSource;
+
+  TransportersTypeFetcher _transportersTypeFetcher;
+
+  TransportersRepositoryImpl(this._favoritesDataSource,
+      this._transportersDataSource, this._transportersTypeFetcher);
 
   bool _isSynced = false;
 
   TransportersRepositoryImpl.withData(
-      FavoritesDataSource favDs,
-      List<Transporter> data)
+      FavoritesDataSource favDs, List<Transporter> data)
       : _transporters = data.toList(),
         _favoritesDataSource = favDs;
 
   @override
   Future<List<Transporter>> findAll() async {
-    if(_transporters.isEmpty){
-      _transporters =
+    if (_transporters.isEmpty) {
+      final localTransporters = await _transportersDataSource.findAll();
+      if (localTransporters.isEmpty) {
+        final buses = await _transportersTypeFetcher
+            .fetchTransporters(TransporterType.bus);
+        final trams = await _transportersTypeFetcher
+            .fetchTransporters(TransporterType.tram);
+        final trolleys = await _transportersTypeFetcher
+            .fetchTransporters(TransporterType.trolley);
+
+        final remoteTransporters = [buses, trams, trolleys].expand((t) => t).toList();
+
+        await _transportersDataSource.save(remoteTransporters);
+        _transporters = remoteTransporters;
+      } else {
+        _transporters = localTransporters;
+      }
     }
     if (!_isSynced) {
       final favIds = await _favoritesDataSource.getAll();
@@ -51,33 +70,18 @@ class TransportersRepositoryImpl implements TransportersRepository {
   }
 
   @override
-  Future<List<Transporter>> findAllByFavorites() async {
-    //todo use "when" for the functional approach?
-    final out = List<Transporter>();
-    _transporters.forEach((t) {
-      if (t.isFavorite) {
-        out.add(t);
-      }
-    });
-    return out;
-  }
+  Future<List<Transporter>> findAllByFavorites() async =>
+      _transporters.where((t) => t.isFavorite).toList();
 
   @override
-  Future<List<Transporter>> findAllByType(TransporterType type) async {
-    //todo use "when" for the functional approach?
-    final out = List<Transporter>();
-    _transporters.forEach((t) {
-      if (t.type == type) {
-        out.add(t);
-      }
-    });
-    return out;
-  }
+  Future<List<Transporter>> findAllByType(TransporterType type) async =>
+      _transporters.where((t) => t.type == type).toList();
 
   @override
   Future<void> save(List<Transporter> transporters) async {
     _transporters.clear();
     _transporters.addAll(transporters);
+    _transportersDataSource.save(transporters);
   }
 
   @override

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:http/http.dart';
 import 'package:stpt_arrivals/data/favorites_data_source.dart';
+import 'package:stpt_arrivals/data/transporters_data_source.dart';
 import 'package:stpt_arrivals/data/transporters_repository.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/transporters/transporters_bloc.dart';
+import 'package:stpt_arrivals/services/parser/transporter_parser.dart';
+import 'package:stpt_arrivals/services/remote_config.dart';
+import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
 import 'package:stpt_arrivals/ui/arrival_display_screen.dart';
 
 class TransportersScreen extends StatefulWidget {
@@ -19,19 +24,11 @@ class _TransportersScreenState extends State<TransportersScreen> {
   var _selectedDropFilter = PrettyTransporterBlocFilter();
 
   _TransportersScreenState() {
-    _bloc = TransportersBlocImpl(
-        TransportersRepositoryImpl.withData(FavoritesDataSourceImpl(), [
-      Transporter("886", "40", TransporterType.bus),
-      Transporter("1551", "E2", TransporterType.bus),
-      Transporter("1550", "E1", TransporterType.bus),
-      Transporter("1547", "E8", TransporterType.bus),
-      Transporter("1046", "33", TransporterType.bus),
-      Transporter("2466", "33b", TransporterType.bus),
-      Transporter("1006", "14", TransporterType.trolley),
-      Transporter("2766", "M14", TransporterType.trolley),
-      Transporter("1106", "1", TransporterType.tram),
-      Transporter("1126", "2", TransporterType.tram),
-    ]));
+    _bloc = TransportersBlocImpl(TransportersRepositoryImpl(
+        FavoritesDataSourceImpl(),
+        TransportersDataSourceImpl(),
+        TransportersTypeFetcherImpl(
+            RemoteConfigImpl(), Client(), TransporterParserImpl())));
   }
 
   @override
@@ -61,21 +58,30 @@ class _TransportersScreenState extends State<TransportersScreen> {
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: DropdownButton<PrettyTransporterBlocFilter>(
-                              isExpanded: true,
-                              onChanged: (PrettyTransporterBlocFilter value) {
-                                setState(() {
-                                  _selectedDropFilter = value;
-                                });
-                                _bloc.showBy(value.filter);
-                              },
-                              items: prettyTransporterBlocFilterValues()
-                                  .map((f) => DropdownMenuItem(
-                                        value: f,
-                                        child: Text(f.toString()),
-                                      ))
-                                  .toList(),
-                              value: _selectedDropFilter),
+                          child: StreamBuilder<bool>(
+                              stream: _bloc.loadingStream,
+                              builder: (context, snapshot) {
+                                final enabled =
+                                    snapshot.hasData ? snapshot.data : false;
+                                return DropdownButton<
+                                        PrettyTransporterBlocFilter>(
+                                    isExpanded: true,
+                                    onChanged: enabled
+                                        ? (PrettyTransporterBlocFilter value) {
+                                            setState(() {
+                                              _selectedDropFilter = value;
+                                            });
+                                            _bloc.showBy(value.filter);
+                                          }
+                                        : null,
+                                    items: prettyTransporterBlocFilterValues()
+                                        .map((f) => DropdownMenuItem(
+                                              value: f,
+                                              child: Text(f.toString()),
+                                            ))
+                                        .toList(),
+                                    value: _selectedDropFilter);
+                              }),
                         ),
                       ),
                     ],
@@ -83,40 +89,78 @@ class _TransportersScreenState extends State<TransportersScreen> {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-              child: StreamBuilder<List<Transporter>>(
-                  stream: _bloc.transportersStream,
-                  builder: (context, snapshot) {
-                    if (snapshot.hasData) {
-                      return Wrap(
-                        runSpacing: 4,
-                        spacing: 4,
-                        children: snapshot.data
-                            .map((t) => _TransporterWidget(
-                                  transporter: t,
-                                  onSelect: (t) {
-                                    Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (_) =>
-                                                ArrivalDisplayScreen(t)));
-                                  },
-                                  onFavorite: (t) {
-                                    _bloc.update(t);
-                                  },
-                                ))
-                            .toList(),
-                      );
-                    } else {
-                      return Center(child: CircularProgressIndicator());
-                    }
-                  }),
+            Expanded(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                child: Stack(children: [
+                  StreamBuilder<List<Transporter>>(
+                      stream: _bloc.transportersStream,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          return Wrap(
+                            runSpacing: 4,
+                            spacing: 4,
+                            children: snapshot.data
+                                .map((t) => _TransporterWidget(
+                                      transporter: t,
+                                      onSelect: (t) {
+                                        Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (_) =>
+                                                    ArrivalDisplayScreen(t)));
+                                      },
+                                      onFavorite: (t) {
+                                        _bloc.update(t);
+                                      },
+                                    ))
+                                .toList(),
+                          );
+                        } else {
+                          return Center(child: CircularProgressIndicator());
+                        }
+                      }),
+                  Center(
+                    child: StreamBuilder<bool>(
+                      stream: _bloc.loadingStream,
+                      builder: (_, snapshot) {
+                        return Opacity(
+                          opacity: snapshot.hasData ? snapshot.data ? 1 : 0 : 1,
+                          child: CircularProgressIndicator(),
+                        );
+                      },
+                    ),
+                  )
+                ]),
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _bloc.errorStream.listen((e) {
+      if (e != null) {
+        _scaffoldKey.currentState.hideCurrentSnackBar();
+        _scaffoldKey.currentState.showSnackBar(SnackBar(
+          content: Padding(
+            child: Text(e.message),
+            padding: EdgeInsets.only(top: 24, bottom: 24),
+          ),
+          duration: Duration(seconds: e.canRetry ? 150 : 3),
+          action: e.canRetry
+              ? SnackBarAction(
+                  label: "RETRY",
+                  onPressed: () => _bloc.showBy(TransporterBlocFilter.ALL))
+              : null,
+        ));
+      }
+    });
   }
 
   @override

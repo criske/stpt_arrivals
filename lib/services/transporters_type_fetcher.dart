@@ -3,18 +3,19 @@ import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/services/parser/transporter_parser.dart';
 import 'package:stpt_arrivals/services/remote_config.dart';
 
-abstract class TransporterTypeFetcher {
+abstract class TransportersTypeFetcher {
   Future<List<Transporter>> fetchTransporters(TransporterType type);
 }
 
-class TransporterTypeFetcherImpl implements TransporterTypeFetcher {
+class TransportersTypeFetcherImpl implements TransportersTypeFetcher {
+
   RemoteConfig _config;
 
   Client _client;
 
   TransporterParser _parser;
 
-  TransporterTypeFetcherImpl(this._config, this._client, this._parser);
+  TransportersTypeFetcherImpl(this._config, this._client, this._parser);
 
   @override
   Future<List<Transporter>> fetchTransporters(TransporterType type) async {

@@ -1,10 +1,12 @@
 import 'package:http/http.dart';
 import 'package:mockito/mockito.dart';
 import 'package:stpt_arrivals/data/favorites_data_source.dart';
+import 'package:stpt_arrivals/data/transporters_data_source.dart';
 import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/restoring_cooldown_manager.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
+import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
 
 class MockRouteArrivalFetcher extends Mock implements RouteArrivalFetcher {}
 
@@ -19,6 +21,10 @@ class MockRestoringCoolDownManager extends Mock implements RestoringCoolDownMana
 class MockArrivalTimeConverter extends Mock implements ArrivalTimeConverter {}
 
 class MockFavoritesDataSource extends Mock implements FavoritesDataSource{}
+
+class MockTransportersDataSource extends Mock implements TransportersDataSource{}
+
+class MockTransportersTypeFetcher extends Mock implements TransportersTypeFetcher {}
 
 class TimelineTimeProvider implements TimeProvider {
   DateTime _timeline;

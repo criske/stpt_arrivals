@@ -8,7 +8,8 @@ void main() {
   TransportersRepository repository;
 
   setUp(() async {
-    repository = TransportersRepositoryImpl(MockFavoritesDataSource());
+    repository = TransportersRepositoryImpl(MockFavoritesDataSource(),
+        MockTransportersDataSource(), MockTransportersTypeFetcher());
     await repository.save([
       Transporter("1", "1", TransporterType.bus),
       Transporter("2", "2", TransporterType.tram),
