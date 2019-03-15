@@ -19,6 +19,8 @@ void main() {
 
   RemoteConfig config;
 
+  final _id = "886";
+
   setUp(() {
     client = MockClient();
     parser = MockParser();
@@ -26,26 +28,27 @@ void main() {
     fetcher = RouteArrivalFetcher(parser, config, client);
   });
 
+
   test("should thow io exception", () async {
     final ex = ClientException("Client Exception");
-    when(client.get(config.arrivalURL(886))).thenThrow(ex);
+    when(client.get(config.routeURL(_id))).thenThrow(ex);
     try {
-      await fetcher.getRouteArrivals(866);
+      await fetcher.getRouteArrivals(_id);
       fail("Error was not thrown");
     } catch (actualEx) {}
   });
 
   test("should succesfully get a result", () async {
     final route = Route(null, null);
-    when(client.get(config.arrivalURL(886)))
+    when(client.get(config.routeURL(_id)))
         .thenAnswer((_) async => http.Response("", 200));
     when(parser.parse("")).thenReturn(route);
-    final result = await fetcher.getRouteArrivals(886);
+    final result = await fetcher.getRouteArrivals(_id);
     expect(route, result);
   });
 
   test("remote config urls", () {
-    expect(config.arrivalURL(886).toString(),
+    expect(config.routeURL(_id).toString(),
         "http://86.125.113.218:61978/html/timpi/trasee.php?param1=886");
   });
 
@@ -54,8 +57,8 @@ void main() {
             RouteArrivalParserImpl(ArrivalTimeConverterImpl()),
             RemoteConfigImpl(),
             Client())
-        .getRouteArrivals(886);
+        .getRouteArrivals("ab_m22");
     expect(2, 1 + 1);
     print(route);
-  }, skip: true);
+  });
 }

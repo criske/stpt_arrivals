@@ -58,7 +58,7 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
                     Container(
-                      margin: EdgeInsets.only(left: 16),
+                      margin: EdgeInsets.only(left: 16, right: 8),
                       padding: EdgeInsets.all(8),
                       child: ConstrainedBox(
                         child: Center(

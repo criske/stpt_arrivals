@@ -19,22 +19,18 @@ class _TransportersScreenState extends State<TransportersScreen> {
   var _selectedDropFilter = PrettyTransporterBlocFilter();
 
   _TransportersScreenState() {
-    _bloc = TransportersBlocImpl(TransporterRepositoryImpl
-        .withData(FavoritesDataSourceImpl(), [
-      Transporter(886, "40", TransporterType.bus),
-      Transporter(1551, "E2", TransporterType.bus),
-      Transporter(1550, "E1", TransporterType.bus),
-      Transporter(1547, "E8", TransporterType.bus),
-      Transporter(1046, "33", TransporterType.bus),
-      Transporter(2466, "33b", TransporterType.bus),
-
-      Transporter(1006, "14", TransporterType.trolley),
-      Transporter(2766, "M14", TransporterType.trolley),
-
-      Transporter(1106, "1", TransporterType.tram),
-      Transporter(1126, "2", TransporterType.tram),
-
-
+    _bloc = TransportersBlocImpl(
+        TransporterRepositoryImpl.withData(FavoritesDataSourceImpl(), [
+      Transporter("886", "40", TransporterType.bus),
+      Transporter("1551", "E2", TransporterType.bus),
+      Transporter("1550", "E1", TransporterType.bus),
+      Transporter("1547", "E8", TransporterType.bus),
+      Transporter("1046", "33", TransporterType.bus),
+      Transporter("2466", "33b", TransporterType.bus),
+      Transporter("1006", "14", TransporterType.trolley),
+      Transporter("2766", "M14", TransporterType.trolley),
+      Transporter("1106", "1", TransporterType.tram),
+      Transporter("1126", "2", TransporterType.tram),
     ]));
   }
 
@@ -56,16 +52,17 @@ class _TransportersScreenState extends State<TransportersScreen> {
                   child: Row(
                     children: <Widget>[
                       Padding(
-                        padding: EdgeInsets.all(4),
+                          padding: EdgeInsets.all(4),
                           child: Text(
-                        "Filter",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      )),
+                            "Filter",
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          )),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: DropdownButton<PrettyTransporterBlocFilter>(
-                            isExpanded: true,
+                              isExpanded: true,
                               onChanged: (PrettyTransporterBlocFilter value) {
                                 setState(() {
                                   _selectedDropFilter = value;
@@ -93,6 +90,8 @@ class _TransportersScreenState extends State<TransportersScreen> {
                   builder: (context, snapshot) {
                     if (snapshot.hasData) {
                       return Wrap(
+                        runSpacing: 4,
+                        spacing: 4,
                         children: snapshot.data
                             .map((t) => _TransporterWidget(
                                   transporter: t,
@@ -143,8 +142,8 @@ class _TransporterWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 90,
-      width: 90,
+      height: 80,
+      width: 80,
       child: Stack(
         children: [
           InkWell(
@@ -171,13 +170,18 @@ class _TransporterWidget extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.topRight,
-            child: IconButton(
-              icon: Icon(
-                  transporter.isFavorite ? Icons.star : Icons.star_border,
-                  color: Theme.of(context).accentColor),
-              onPressed: () {
-                onFavorite(transporter.toggleFavorite());
-              },
+            child: Container(
+              width: 30,
+              height: 30,
+              child: IconButton(
+                padding: EdgeInsets.all(2),
+                icon: Icon(
+                    transporter.isFavorite ? Icons.star : Icons.star_border,
+                    color: Theme.of(context).accentColor),
+                onPressed: () {
+                  onFavorite(transporter.toggleFavorite());
+                },
+              ),
             ),
           )
         ],

@@ -10,7 +10,6 @@ abstract class RouteArrivalParser {
 }
 
 class RouteArrivalParserImpl implements RouteArrivalParser {
-
   static const String _404 = "Linia NU CIRCULĂ AZI!";
 
   ArrivalTimeConverter _timeConverter;
@@ -29,8 +28,8 @@ class RouteArrivalParserImpl implements RouteArrivalParser {
     var wayCount = 0;
 
     tables.forEach((Element t) {
-      if(_extractTextFromColumn(t, 0).contains(_404)){
-        throw MessageError("Arrival data for this route not found!", true);
+      if (_extractTextFromColumn(t, 0).contains(_404)) {
+        throw RouteNotFoundError("Arrival data for this route not found!");
       }
       final isWay = _isWay(t);
       if (isWay) {
@@ -60,7 +59,9 @@ class RouteArrivalParserImpl implements RouteArrivalParser {
   bool _isWay(Element t) {
     var attributes = t.attributes;
     final bgColor = attributes["bgcolor"];
-    return attributes.containsKey("style") || bgColor == "0048A1" || bgColor == "E3A900" ;
+    return attributes.containsKey("style") ||
+        bgColor == "0048A1" ||
+        bgColor == "E3A900";
   }
 
   bool _isHeader(Element t) => _extractTextFromColumn(t, 1).trim() == "Sosire";
@@ -73,3 +74,6 @@ class RouteArrivalParserImpl implements RouteArrivalParser {
       .trim();
 }
 
+class RouteNotFoundError extends MessageError {
+  RouteNotFoundError(String message) : super(message, false);
+}

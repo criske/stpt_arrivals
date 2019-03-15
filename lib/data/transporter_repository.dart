@@ -46,7 +46,7 @@ class TransporterRepositoryImpl implements TransporterRepository {
 
   @override
   Future<List<Transporter>> findAllByFavorites() async {
-    //todo takeWhile not working?
+    //todo use "when" for the functional approach?
     final out = List<Transporter>();
     _transporters.forEach((t) {
       if (t.isFavorite) {
@@ -58,7 +58,7 @@ class TransporterRepositoryImpl implements TransporterRepository {
 
   @override
   Future<List<Transporter>> findAllByType(TransporterType type) async {
-    //todo takeWhile not working?
+    //todo use "when" for the functional approach?
     final out = List<Transporter>();
     _transporters.forEach((t) {
       if (t.type == type) {

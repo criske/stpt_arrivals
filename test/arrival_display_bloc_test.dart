@@ -34,11 +34,13 @@ void main() {
     state = blc.ArrivalState.defaultState;
   });
 
+  final _id = "100";
+
   test("should emit [LOADING, DISPLAY]", () async {
-    when(fetcher.getRouteArrivals(100)).thenAnswer((_) async {
+    when(fetcher.getRouteArrivals(_id)).thenAnswer((_) async {
       return route;
     });
-    bloc.load(100);
+    bloc.load(_id);
     state = state.nextFlag(blc.StateFlag.LOADING);
     expect(await queue.next, state);
     state = state.nextRoute(toggleableRoute).nextFlag(blc.StateFlag.FINISHED);
@@ -46,27 +48,27 @@ void main() {
   });
 
   test("should emit [DISPLAY, COOLDOWN-ERR, DISPLAY]", () async {
-    when(fetcher.getRouteArrivals(100)).thenAnswer((_) async {
+    when(fetcher.getRouteArrivals(_id)).thenAnswer((_) async {
       return Route(Way(List(), "Way1"), Way(List(), "Way2"));
     });
 
-    bloc.load(100);
+    bloc.load(_id);
     await queue.next;
     await queue.next;
     timeline.advance(Duration(seconds: 3));
-    bloc.load(100);
+    bloc.load(_id);
     state = state.nextRoute(toggleableRoute).nextFlag(blc.StateFlag.IDLE);
     expect(await queue.next, state);
     //expect((await errQueue.next).message, "Wait 27 seconds more and then try again");
     timeline.advance(Duration(seconds: 60));
-    bloc.load(100);
+    bloc.load(_id);
     await queue.next;
     state = state.nextError(null).nextFlag(blc.StateFlag.FINISHED);
     expect(await queue.next, state);
   });
 
   test("should emit [LOADING, DISPLAY, TOGGLE]", () async {
-    when(fetcher.getRouteArrivals(100)).thenAnswer((_) async {
+    when(fetcher.getRouteArrivals(_id)).thenAnswer((_) async {
       return Route(Way(List(), "Way1"), Way(List(), "Way2"));
     });
 
@@ -92,11 +94,11 @@ void main() {
 //  });
 
   test("should emit [LOADING, IDLE] when cancel", () async {
-    when(fetcher.getRouteArrivals(100)).thenAnswer((_) async {
+    when(fetcher.getRouteArrivals(_id)).thenAnswer((_) async {
       sleep(Duration(milliseconds: 300));
       return Route(Way(List(), "Way1"), Way(List(), "Way2"));
     });
-    bloc.load(100);
+    bloc.load(_id);
     bloc.cancel();
     await queue.next;
     expect(await queue.next, state);

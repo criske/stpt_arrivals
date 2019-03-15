@@ -1,5 +1,6 @@
 import 'package:http/http.dart';
 import 'package:mockito/mockito.dart';
+import 'package:stpt_arrivals/data/favorites_data_source.dart';
 import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/restoring_cooldown_manager.dart';
@@ -16,6 +17,8 @@ class MockTimeProvider extends Mock implements TimeProvider {}
 class MockRestoringCoolDownManager extends Mock implements RestoringCoolDownManager{}
 
 class MockArrivalTimeConverter extends Mock implements ArrivalTimeConverter {}
+
+class MockFavoritesDataSource extends Mock implements FavoritesDataSource{}
 
 class TimelineTimeProvider implements TimeProvider {
   DateTime _timeline;

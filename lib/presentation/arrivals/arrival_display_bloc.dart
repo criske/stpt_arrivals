@@ -14,6 +14,7 @@ import 'package:stpt_arrivals/services/restoring_cooldown_manager.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 
 abstract class ArrivalDisplayBloc implements DisposableBloc {
+
   static const Duration coolDownThreshold = const Duration(seconds: 30);
 
   final Stream<ArrivalState> streamState = Stream.empty();
@@ -26,7 +27,7 @@ abstract class ArrivalDisplayBloc implements DisposableBloc {
 
   final Stream<List<ArrivalUI>> arrivalsStream = Stream.empty();
 
-  void load(int transporterId);
+  void load(String transporterId);
 
   void cancel();
 
@@ -35,6 +36,7 @@ abstract class ArrivalDisplayBloc implements DisposableBloc {
 
 
 class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
+
   TimeProvider _timeProvider;
 
   TimeUIConverter _timeUIConverter;
@@ -88,7 +90,7 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       _actionCancelSubject.add(_Action.cancel(_timeProvider.timeMillis()));
 
   @override
-  void load(int transporterId) => _actionLoadSubject
+  void load(String transporterId) => _actionLoadSubject
       .add(_Action.load(_timeProvider.timeMillis(), transporterId));
 
   @override
@@ -230,7 +232,7 @@ abstract class _Action {
 
 @immutable
 class _ActionLoad extends _Action {
-  final int transporterId;
+  final String transporterId;
 
   const _ActionLoad(time, this.transporterId) : super(time);
 }

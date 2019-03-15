@@ -6,7 +6,7 @@ enum TransporterType { tram, trolley, bus, boat }
 
 @immutable
 class Transporter {
-  final int id;
+  final String id;
 
   final String name;
 

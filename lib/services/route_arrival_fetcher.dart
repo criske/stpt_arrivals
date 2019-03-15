@@ -14,11 +14,23 @@ class RouteArrivalFetcher {
 
   RouteArrivalFetcher(this._parser, this._config, this._client);
 
-  Future<Route> getRouteArrivals(int transporterId) async {
-    Uri uri = _config.arrivalURL(transporterId);
-    Response response = await _client.get(uri);
+  Future<Route> getRouteArrivals(String transporterId) async {
+    Response response = await _client.get(_config.routeURL(transporterId));
     if (response.statusCode == 200) {
-      return _parser.parse(response.body);
+      try {
+        return _parser.parse(response.body);
+      } catch (e) {
+        if (e is RouteNotFoundError) {
+          response =
+              await _client.get(_config.routeURLSpecialId(transporterId));
+          if (response.statusCode == 200) {
+            return _parser.parse(response.body);
+          } else {
+            throw Exception(response.statusCode);
+          }
+        } else
+          throw e;
+      }
     } else {
       throw Exception(response.statusCode);
     }
