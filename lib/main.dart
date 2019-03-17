@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stpt_arrivals/ui/application_state_widget.dart';
 import 'package:stpt_arrivals/ui/transporters_screen.dart';
 
 void main() => runApp(new MyApp());
@@ -12,7 +13,7 @@ class MyApp extends StatelessWidget {
           primarySwatch: Colors.amber,
         ),
         debugShowCheckedModeBanner: false,
-        home: TransportersScreen()
+        home: ApplicationStateWidget(child: TransportersScreen())
     );
   }
 }

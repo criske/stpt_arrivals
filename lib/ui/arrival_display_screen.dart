@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
+import 'package:stpt_arrivals/data/cool_down_data_source.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/arrivals/arrival_display_bloc.dart';
 import 'package:stpt_arrivals/presentation/arrivals/arrival_ui.dart';
@@ -32,7 +33,7 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
         TimeUIConverterImpl(),
         RouteArrivalFetcher(RouteArrivalParserImpl(timeConverter),
             RemoteConfigImpl(), Client()),
-        RestoringCoolDownManagerImpl());
+        RestoringCoolDownManagerImpl(CoolDownDataSourceImpl()));
   }
 
   @override
@@ -110,10 +111,7 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
     _bloc.errorStream.listen((e) {
       _scaffoldKey.currentState.hideCurrentSnackBar();
       _scaffoldKey.currentState.showSnackBar(SnackBar(
-        content: Padding(
-          child: Text(e.message),
-          padding: EdgeInsets.only(top: 24, bottom: 24),
-        ),
+        content: Text(e.message),
         duration: Duration(seconds: e.canRetry ? 15 : 3),
         action: e.canRetry
             ? SnackBarAction(

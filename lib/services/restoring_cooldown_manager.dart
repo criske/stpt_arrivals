@@ -1,23 +1,55 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:rxdart/rxdart.dart';
+import 'package:stpt_arrivals/data/cool_down_data_source.dart';
 
 abstract class RestoringCoolDownManager {
-  Future<int> loadLastCoolDown();
+  static const Duration coolDownThreshold = const Duration(seconds: 30);
 
-  Future<void> retainLastCoolDown(int timeMillis);
+  Stream<int> getLastCoolDown();
+
+  Stream<Duration> getLastCoolDownDuration();
+
+  Future<void> saveLastCoolDown(int timeMillis);
+
+  void dispose();
+
+  int timeRemainingSeconds(int lastTimeMillis, int nowMillis) {
+    var remaining = RestoringCoolDownManager.coolDownThreshold.inSeconds -
+        (Duration(milliseconds: nowMillis) -
+                Duration(milliseconds: lastTimeMillis))
+            .inSeconds;
+    return remaining;
+  }
+
+  double timeRemainingPercent(int lastTimeMillis, int nowMillis) =>
+      timeRemainingSeconds(lastTimeMillis, nowMillis) /
+      coolDownThreshold.inSeconds;
 }
 
-class RestoringCoolDownManagerImpl implements RestoringCoolDownManager {
-  static const _restoringCoolDownKey = "RESTORING_COOLDOWN_KEY";
+class RestoringCoolDownManagerImpl extends RestoringCoolDownManager {
+  final CoolDownDataSource coolDownDataSource;
+
+  RestoringCoolDownManagerImpl(this.coolDownDataSource);
+
+  BehaviorSubject<int> _subjectLastCoolDown = BehaviorSubject();
 
   @override
-  Future<int> loadLastCoolDown() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_restoringCoolDownKey) ?? 0;
+  Stream<int> getLastCoolDown() => RaceStream([
+        _subjectLastCoolDown.stream,
+        Observable.fromFuture(coolDownDataSource.loadLastCoolDown())
+      ]);
+
+  @override
+  Stream<Duration> getLastCoolDownDuration() =>
+      getLastCoolDown().map((timeMillis) => Duration(milliseconds: timeMillis));
+
+  @override
+  Future<void> saveLastCoolDown(int timeMillis) async {
+    await coolDownDataSource.retainLastCoolDown(timeMillis);
+    _subjectLastCoolDown.add(timeMillis);
   }
 
   @override
-  Future<void> retainLastCoolDown(int timeMillis) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_restoringCoolDownKey, timeMillis);
+  void dispose() {
+    _subjectLastCoolDown.close();
   }
 }

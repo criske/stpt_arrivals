@@ -5,11 +5,14 @@ import 'package:stpt_arrivals/data/favorites_data_source.dart';
 import 'package:stpt_arrivals/data/transporters_data_source.dart';
 import 'package:stpt_arrivals/data/transporters_repository.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
+import 'package:stpt_arrivals/presentation/application_state_bloc.dart';
 import 'package:stpt_arrivals/presentation/transporters/transporters_bloc.dart';
 import 'package:stpt_arrivals/services/parser/transporter_parser.dart';
 import 'package:stpt_arrivals/services/remote_config.dart';
 import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
+import 'package:stpt_arrivals/ui/application_state_widget.dart';
 import 'package:stpt_arrivals/ui/arrival_display_screen.dart';
+import 'package:stpt_arrivals/ui/cool_down_widget.dart';
 
 class TransportersScreen extends StatefulWidget {
   @override
@@ -106,11 +109,28 @@ class _TransportersScreenState extends State<TransportersScreen> {
                                   .map((t) => _TransporterWidget(
                                         transporter: t,
                                         onSelect: (t) {
-                                          Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      ArrivalDisplayScreen(t)));
+                                          final canRoute =
+                                              !ApplicationStateWidget.of(
+                                                      context)
+                                                  .bloc
+                                                  .isInCoolDown();
+                                          if (canRoute) {
+                                            Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                    builder: (_) =>
+                                                        ArrivalDisplayScreen(
+                                                            t)));
+                                          } else {
+                                            Scaffold.of(context)
+                                                .hideCurrentSnackBar();
+                                            Scaffold.of(context)
+                                                .showSnackBar(SnackBar(
+                                              content: Text(
+                                                  "Wait for cool down to end"),
+                                              duration: Duration(seconds: 1),
+                                            ));
+                                          }
                                         },
                                         onFavorite: (t) {
                                           _bloc.update(t);
@@ -133,6 +153,23 @@ class _TransportersScreenState extends State<TransportersScreen> {
                         );
                       },
                     ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: StreamBuilder<CoolDown>(
+                        stream: ApplicationStateWidget.of(context)
+                            .bloc
+                            .remainingCoolDownStream(),
+                        builder: (context, snapshot) {
+                          return snapshot.hasData
+                              ? CoolDownWidget(
+                                  remaining: snapshot.data.percent,
+                                  text:
+                                      snapshot.data.remainingSeconds.toString(),
+                                )
+                              : Container();
+                        }),
                   )
                 ]),
               ),

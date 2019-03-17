@@ -15,8 +15,6 @@ import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 
 abstract class ArrivalDisplayBloc implements DisposableBloc {
 
-  static const Duration coolDownThreshold = const Duration(seconds: 30);
-
   final Stream<ArrivalState> streamState = Stream.empty();
 
   final Stream<bool> loadingStream = Stream.empty();
@@ -53,21 +51,19 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       this._arrivalFetcher, this._coolDownManager,
       [this._initialState]) {
     final loadStream =
-        Observable.fromFuture(_coolDownManager.loadLastCoolDown())
-            .map((time) {
-              final timeDiff = ArrivalDisplayBloc.coolDownThreshold.inSeconds -
-                  (Duration(milliseconds: _timeProvider.timeMillis()) -
-                          Duration(milliseconds: time))
-                      .inSeconds;
-              if (timeDiff <= 0) {
-                return _Action.idle;
-              } else {
-                return _ActionCoolDown(time, timeDiff);
-              }
-            })
-            .cast<_Action>()
-            .concatWith([_actionLoadSubject.stream])
-            .scan(_coolDownController, _Action.idle);
+    Observable(_coolDownManager.getLastCoolDown())
+        .map((time) {
+      final timeDiff = _coolDownManager.timeRemainingSeconds(
+          time, _timeProvider.timeMillis());
+      if (timeDiff <= 0) {
+        return _Action.idle;
+      } else {
+        return _ActionCoolDown(time, timeDiff);
+      }
+    })
+        .cast<_Action>()
+        .concatWith([_actionLoadSubject.stream])
+        .scan(_coolDownController, _Action.idle);
     var toggleStream = _actionToggleSubject.stream;
 
     _stateObservable = Observable.merge([loadStream, toggleStream])
@@ -90,8 +86,9 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       _actionCancelSubject.add(_Action.cancel(_timeProvider.timeMillis()));
 
   @override
-  void load(String transporterId) => _actionLoadSubject
-      .add(_Action.load(_timeProvider.timeMillis(), transporterId));
+  void load(String transporterId) =>
+      _actionLoadSubject
+          .add(_Action.load(_timeProvider.timeMillis(), transporterId));
 
   @override
   void toggleWay() =>
@@ -108,10 +105,15 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   Stream<ArrivalState> get streamState => _stateObservable;
 
   @override
-  Stream<List<ArrivalUI>> get arrivalsStream => _stateObservable
-      .map((s) => s.toggleableRoute.getWay().arrivals)
-      .distinct((prev, next) => ListEquality().equals(prev, next))
-      .map((arrivals) => arrivals.map((a) {
+  Stream<List<ArrivalUI>> get arrivalsStream =>
+      _stateObservable
+          .map((s) =>
+      s.toggleableRoute
+          .getWay()
+          .arrivals)
+          .distinct((prev, next) => ListEquality().equals(prev, next))
+          .map((arrivals) =>
+          arrivals.map((a) {
             final timeUI1 = _timeUIConverter.toUI(a.time);
             final timeUI2 = _timeUIConverter.toUI(a.time2);
             return ArrivalUI(a.station.id, a.station.name, timeUI1, timeUI2);
@@ -148,7 +150,10 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
 
   @override
   Stream<String> get wayNameStream =>
-      _stateObservable.map((s) => s.toggleableRoute.getWay().name).distinct();
+      _stateObservable.map((s) =>
+      s.toggleableRoute
+          .getWay()
+          .name).distinct();
 
   _Action _coolDownController(acc, curr, _) {
     if (acc is _ActionIdle || curr is _ActionIdle || curr is _ActionCoolDown) {
@@ -156,10 +161,10 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
     } else {
       final timeDiff =
           Duration(milliseconds: curr.time) - Duration(milliseconds: acc.time);
-      if (timeDiff < ArrivalDisplayBloc.coolDownThreshold) {
+      if (timeDiff < RestoringCoolDownManager.coolDownThreshold) {
         return _ActionCoolDown(
             acc.time,
-            ArrivalDisplayBloc.coolDownThreshold.inSeconds -
+            RestoringCoolDownManager.coolDownThreshold.inSeconds -
                 timeDiff.inSeconds);
       } else {
         return curr;
@@ -172,28 +177,31 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE));
     } else if (action is _ActionLoad) {
       return Observable.fromFuture(
-              _arrivalFetcher.getRouteArrivals(action.transporterId))
+          _arrivalFetcher.getRouteArrivals(action.transporterId))
           .map((route) => ArrivalState.partialRoute(route))
-          .flatMap((state) => Observable.fromFuture(
-                  _coolDownManager.retainLastCoolDown(action.time))
+          .flatMap((state) =>
+          Observable.fromFuture(
+              _coolDownManager.saveLastCoolDown(action.time))
               .map((_) => state))
           .doOnError((e, __) {
-            _errorStream.add(_errorMapper(e));
-            _actionLoadSubject.add(_Action.idle);
-          })
+        _errorStream.add(_errorMapper(e));
+        _actionLoadSubject.add(_Action.idle);
+      })
           .onErrorReturnWith((e) => ArrivalState.partialFlag(StateFlag.IDLE))
           .startWith(ArrivalState.partialFlag(StateFlag.LOADING))
           .takeUntil(_actionCancelSubject.stream
-              .doOnData((_) => _actionLoadSubject.add(_Action.idle)));
+          .doOnData((_) => _actionLoadSubject.add(_Action.idle)));
     } else if (action is _ActionCoolDown) {
       return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE)).doOnData(
-          (_) => _errorStream.add(ErrorUI(
-              "Wait ${action.remainingSeconds} more seconds and then try again")));
+              (_) =>
+              _errorStream.add(ErrorUI(
+                  "Wait ${action
+                      .remainingSeconds} more seconds and then try again")));
     } else if (action is _ActionToggle) {
       return Observable.just(ArrivalState.partialFlag(StateFlag.TOGGLE));
     } else {
       return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE)).doOnData(
-          (_) => _errorStream.add(ErrorUI("Unprocessed action $action")));
+              (_) => _errorStream.add(ErrorUI("Unprocessed action $action")));
     }
   }
 
@@ -262,7 +270,7 @@ class _ActionIdle extends _Action {
 @immutable
 class ArrivalState {
   static final _emptyRoute =
-      ToggleableRoute(Route(Way(List(), ""), Way(List(), "")));
+  ToggleableRoute(Route(Way(List(), ""), Way(List(), "")));
 
   factory ArrivalState.partialRoute(Route route) =>
       ArrivalState(ToggleableRoute(route), StateFlag.FINISHED);
@@ -290,8 +298,8 @@ class ArrivalState {
   @override
   bool operator ==(other) =>
       other is ArrivalState &&
-      this.flag == other.flag &&
-      this.toggleableRoute == other.toggleableRoute;
+          this.flag == other.flag &&
+          this.toggleableRoute == other.toggleableRoute;
 
   @override
   int get hashCode => hashValues(toggleableRoute, flag);
@@ -317,8 +325,8 @@ class ToggleableRoute {
   @override
   bool operator ==(other) =>
       other is ToggleableRoute &&
-      this._isWayTo == other._isWayTo &&
-      this._route == other._route;
+          this._isWayTo == other._isWayTo &&
+          this._route == other._route;
 
   @override
   int get hashCode => hashValues(_route, _isWayTo);
