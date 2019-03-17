@@ -5,13 +5,11 @@ import 'package:stpt_arrivals/data/favorites_data_source.dart';
 import 'package:stpt_arrivals/data/transporters_data_source.dart';
 import 'package:stpt_arrivals/data/transporters_repository.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
-import 'package:stpt_arrivals/presentation/application_state_bloc.dart';
 import 'package:stpt_arrivals/presentation/transporters/transporters_bloc.dart';
 import 'package:stpt_arrivals/services/parser/transporter_parser.dart';
 import 'package:stpt_arrivals/services/remote_config.dart';
 import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
 import 'package:stpt_arrivals/ui/application_state_widget.dart';
-import 'package:stpt_arrivals/ui/cool_down_widget.dart';
 
 class TransportersScreen extends StatefulWidget {
   @override
@@ -33,136 +31,106 @@ class _TransportersScreenState extends State<TransportersScreen> {
   @override
   Widget build(BuildContext context) {
     return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Material(
-              elevation: 2,
-              child: Container(
-                height: 56,
-                margin: EdgeInsets.only(bottom: 8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Row(
-                    children: <Widget>[
-                      Padding(
-                          padding: EdgeInsets.all(4),
-                          child: Text(
-                            "Filter",
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          )),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: StreamBuilder<bool>(
-                              stream: _bloc.loadingStream,
-                              builder: (context, snapshot) {
-                                final enabled =
-                                    snapshot.hasData ? !snapshot.data : false;
-                                return DropdownButton<
-                                        PrettyTransporterBlocFilter>(
-                                    isExpanded: true,
-                                    onChanged: enabled
-                                        ? (PrettyTransporterBlocFilter value) {
-                                            setState(() {
-                                              _selectedDropFilter = value;
-                                            });
-                                            _bloc.showBy(value.filter);
-                                          }
-                                        : null,
-                                    items: prettyTransporterBlocFilterValues()
-                                        .map((f) => DropdownMenuItem(
-                                              value: f,
-                                              child: Text(f.toString()),
-                                            ))
-                                        .toList(),
-                                    value: _selectedDropFilter);
-                              }),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                child: Stack(children: [
-                  StreamBuilder<List<Transporter>>(
-                      stream: _bloc.transportersStream,
-                      builder: (context, snapshot) {
-                        if (snapshot.hasData) {
-                          return SingleChildScrollView(
-                            child: Wrap(
-                              runSpacing: 4,
-                              spacing: 4,
-                              children: snapshot.data
-                                  .map((t) => _TransporterWidget(
-                                        transporter: t,
-                                        onSelect: (t) {
-                                          final canRoute =
-                                              !ApplicationStateWidget.of(
-                                                      context)
-                                                  .bloc
-                                                  .isInCoolDown();
-                                          if (canRoute) {
-                                            Navigator.pushNamed(context, "/arrivals", arguments: t);
-                                          } else {
-                                            Scaffold.of(context)
-                                                .hideCurrentSnackBar();
-                                            Scaffold.of(context)
-                                                .showSnackBar(SnackBar(
-                                              content: Text(
-                                                  "Wait for cool down to end"),
-                                              duration: Duration(seconds: 1),
-                                            ));
-                                          }
-                                        },
-                                        onFavorite: (t) {
-                                          _bloc.update(t);
-                                        },
-                                      ))
-                                  .toList(),
-                            ),
-                          );
-                        } else {
-                          return Center(child: CircularProgressIndicator());
-                        }
-                      }),
-                  Center(
-                    child: StreamBuilder<bool>(
-                      stream: _bloc.loadingStream,
-                      builder: (_, snapshot) {
-                        return Opacity(
-                          opacity: snapshot.hasData ? snapshot.data ? 1 : 0 : 1,
-                          child: CircularProgressIndicator(),
-                        );
-                      },
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Material(
+          elevation: 2,
+          child: Container(
+            height: 56,
+            margin: EdgeInsets.only(bottom: 8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                children: <Widget>[
+                  Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Text(
+                        "Filter",
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      )),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: StreamBuilder<bool>(
+                          stream: _bloc.loadingStream,
+                          builder: (context, snapshot) {
+                            final enabled =
+                                snapshot.hasData ? !snapshot.data : false;
+                            return DropdownButton<PrettyTransporterBlocFilter>(
+                                isExpanded: true,
+                                onChanged: enabled
+                                    ? (PrettyTransporterBlocFilter value) {
+                                        setState(() {
+                                          _selectedDropFilter = value;
+                                        });
+                                        _bloc.showBy(value.filter);
+                                      }
+                                    : null,
+                                items: prettyTransporterBlocFilterValues()
+                                    .map((f) => DropdownMenuItem(
+                                          value: f,
+                                          child: Text(f.toString()),
+                                        ))
+                                    .toList(),
+                                value: _selectedDropFilter);
+                          }),
                     ),
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: StreamBuilder<CoolDown>(
-                        stream: ApplicationStateWidget.of(context)
-                            .bloc
-                            .remainingCoolDownStream(),
-                        builder: (context, snapshot) {
-                          return snapshot.hasData
-                              ? CoolDownWidget(
-                                  remaining: snapshot.data.percent,
-                                  text:
-                                      snapshot.data.remainingSeconds.toString(),
-                                )
-                              : Container();
-                        }),
-                  )
-                ]),
+                ],
               ),
             ),
-          ],
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+            child: Stack(children: [
+              StreamBuilder<List<Transporter>>(
+                  stream: _bloc.transportersStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      return SingleChildScrollView(
+                        child: Wrap(
+                          runSpacing: 4,
+                          spacing: 4,
+                          children: snapshot.data
+                              .map((t) => _TransporterWidget(
+                                    transporter: t,
+                                    onSelect: (t) {
+                                      ApplicationStateWidget.of(context)
+                                          .tryAction(
+                                              context,
+                                              () => Navigator.pushNamed(
+                                                  context, "/arrivals",
+                                                  arguments: t));
+                                    },
+                                    onFavorite: (t) {
+                                      _bloc.update(t);
+                                    },
+                                  ))
+                              .toList(),
+                        ),
+                      );
+                    } else {
+                      return Center(child: CircularProgressIndicator());
+                    }
+                  }),
+              Center(
+                child: StreamBuilder<bool>(
+                  stream: _bloc.loadingStream,
+                  builder: (_, snapshot) {
+                    return Opacity(
+                      opacity: snapshot.hasData ? snapshot.data ? 1 : 0 : 1,
+                      child: CircularProgressIndicator(),
+                    );
+                  },
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ],
     );
   }
 
@@ -171,8 +139,8 @@ class _TransportersScreenState extends State<TransportersScreen> {
     super.didChangeDependencies();
     _bloc.errorStream.listen((e) {
       if (e != null) {
-       Scaffold.of(context).hideCurrentSnackBar();
-       Scaffold.of(context).showSnackBar(SnackBar(
+        Scaffold.of(context).hideCurrentSnackBar();
+        Scaffold.of(context).showSnackBar(SnackBar(
           content: Padding(
             child: Text(e.message),
             padding: EdgeInsets.only(top: 24, bottom: 24),

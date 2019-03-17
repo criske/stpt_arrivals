@@ -50,22 +50,9 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   ArrivalDisplayBlocImpl(this._timeProvider, this._timeUIConverter,
       this._arrivalFetcher, this._coolDownManager,
       [this._initialState]) {
-    final loadStream =
-    Observable(_coolDownManager.getLastCoolDown())
-        .map((time) {
-      final timeDiff = _coolDownManager.timeRemainingSeconds(
-          time, _timeProvider.timeMillis());
-      if (timeDiff <= 0) {
-        return _Action.idle;
-      } else {
-        return _ActionCoolDown(time, timeDiff);
-      }
-    })
-        .cast<_Action>()
-        .concatWith([_actionLoadSubject.stream])
+   final loadStream = _actionLoadSubject.stream
         .scan(_coolDownController, _Action.idle);
     var toggleStream = _actionToggleSubject.stream;
-
     _stateObservable = Observable.merge([loadStream, toggleStream])
         .flatMap(_actionController)
         .scan(_stateReducer, _initialState ?? ArrivalState.defaultState)

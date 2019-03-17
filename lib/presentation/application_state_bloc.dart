@@ -22,7 +22,7 @@ class ApplicationStateBloc {
             .takeWhile((cd) => cd.remainingSeconds >= 0)
             .doOnData((_) => _isInCoolDown = true)
             .doOnDone(() => _isInCoolDown = false);
-      });
+      }).share();
 
   CoolDown createCoolDownFromTimeMillis(int time) {
     final now = timeProvider.timeMillis();

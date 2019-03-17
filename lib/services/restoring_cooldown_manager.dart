@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:rxdart/rxdart.dart';
 import 'package:stpt_arrivals/data/cool_down_data_source.dart';
 
@@ -26,17 +28,22 @@ abstract class RestoringCoolDownManager {
 }
 
 class RestoringCoolDownManagerImpl extends RestoringCoolDownManager {
-  final CoolDownDataSource coolDownDataSource;
 
-  RestoringCoolDownManagerImpl(this.coolDownDataSource);
+  CoolDownDataSource coolDownDataSource;
 
   BehaviorSubject<int> _subjectLastCoolDown = BehaviorSubject();
 
+  StreamSubscription<int> _subscriptionLastCoolDown;
+
+  RestoringCoolDownManagerImpl(CoolDownDataSource coolDownDataSource){
+    this.coolDownDataSource = coolDownDataSource;
+    _subscriptionLastCoolDown = Observable.fromFuture(coolDownDataSource.loadLastCoolDown())
+        .listen((t)=> _subjectLastCoolDown.add(t));
+  }
+
+
   @override
-  Stream<int> getLastCoolDown() => RaceStream([
-        _subjectLastCoolDown.stream,
-        Observable.fromFuture(coolDownDataSource.loadLastCoolDown())
-      ]);
+  Stream<int> getLastCoolDown() => _subjectLastCoolDown.stream;
 
   @override
   Stream<Duration> getLastCoolDownDuration() =>
@@ -44,12 +51,13 @@ class RestoringCoolDownManagerImpl extends RestoringCoolDownManager {
 
   @override
   Future<void> saveLastCoolDown(int timeMillis) async {
-    await coolDownDataSource.retainLastCoolDown(timeMillis);
     _subjectLastCoolDown.add(timeMillis);
+    await coolDownDataSource.retainLastCoolDown(timeMillis);
   }
 
   @override
   void dispose() {
     _subjectLastCoolDown.close();
+    _subscriptionLastCoolDown.cancel();
   }
 }
