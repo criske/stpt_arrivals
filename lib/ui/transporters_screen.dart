@@ -11,7 +11,6 @@ import 'package:stpt_arrivals/services/parser/transporter_parser.dart';
 import 'package:stpt_arrivals/services/remote_config.dart';
 import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
 import 'package:stpt_arrivals/ui/application_state_widget.dart';
-import 'package:stpt_arrivals/ui/arrival_display_screen.dart';
 import 'package:stpt_arrivals/ui/cool_down_widget.dart';
 
 class TransportersScreen extends StatefulWidget {
@@ -21,9 +20,6 @@ class TransportersScreen extends StatefulWidget {
 
 class _TransportersScreenState extends State<TransportersScreen> {
   TransportersBloc _bloc;
-
-  final _scaffoldKey = GlobalKey<ScaffoldState>();
-
   var _selectedDropFilter = PrettyTransporterBlocFilter();
 
   _TransportersScreenState() {
@@ -36,10 +32,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        key: _scaffoldKey,
-        body: Column(
+    return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Material(
@@ -115,12 +108,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
                                                   .bloc
                                                   .isInCoolDown();
                                           if (canRoute) {
-                                            Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        ArrivalDisplayScreen(
-                                                            t)));
+                                            Navigator.pushNamed(context, "/arrivals", arguments: t);
                                           } else {
                                             Scaffold.of(context)
                                                 .hideCurrentSnackBar();
@@ -175,8 +163,6 @@ class _TransportersScreenState extends State<TransportersScreen> {
               ),
             ),
           ],
-        ),
-      ),
     );
   }
 
@@ -185,8 +171,8 @@ class _TransportersScreenState extends State<TransportersScreen> {
     super.didChangeDependencies();
     _bloc.errorStream.listen((e) {
       if (e != null) {
-        _scaffoldKey.currentState.hideCurrentSnackBar();
-        _scaffoldKey.currentState.showSnackBar(SnackBar(
+       Scaffold.of(context).hideCurrentSnackBar();
+       Scaffold.of(context).showSnackBar(SnackBar(
           content: Padding(
             child: Text(e.message),
             padding: EdgeInsets.only(top: 24, bottom: 24),

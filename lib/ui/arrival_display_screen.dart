@@ -46,62 +46,59 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        key: _scaffoldKey,
-        body: Column(
-          children: <Widget>[
-            Material(
-              elevation: 2,
-              child: Container(
-                height: 56,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    Container(
-                      margin: EdgeInsets.only(left: 16, right: 8),
-                      padding: EdgeInsets.all(8),
-                      child: ConstrainedBox(
-                        child: Center(
-                          child: Text(widget.transporter.name,
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
-                        ),
-                        constraints:
-                            BoxConstraints(minWidth: 28, maxHeight: 28),
+    return Column(
+      children: <Widget>[
+        Material(
+          elevation: 2,
+          child: Container(
+            height: 56,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                InkWell(
+                  child: Container(
+                    margin: EdgeInsets.only(left: 16, right: 8),
+                    padding: EdgeInsets.all(8),
+                    child: ConstrainedBox(
+                      child: Center(
+                        child: Text(widget.transporter.name,
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
                       ),
-                      decoration: BoxDecoration(
-                          color: Colors.black87,
-                          borderRadius: BorderRadius.all(Radius.circular(5.0))),
+                      constraints: BoxConstraints(minWidth: 28, maxHeight: 28),
                     ),
-                    StreamBuilder(
-                      stream: _bloc.wayNameStream,
-                      builder: (context, snapshot) => Expanded(
-                          child: Center(
-                              child: Text(snapshot.hasData
-                                  ? snapshot.data
-                                  : "??\u{2192}??"))),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.timeline),
-                      onPressed: () => _bloc.toggleWay(),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.refresh),
-                      onPressed: () => _bloc.load(widget.transporter.id),
-                    ),
-                  ],
+                    decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.all(Radius.circular(5.0))),
+                  ),
+                  onTap: () => Navigator.of(context).pop(),
                 ),
-              ),
+                StreamBuilder(
+                  stream: _bloc.wayNameStream,
+                  builder: (context, snapshot) => Expanded(
+                      child: Center(
+                          child: Text(snapshot.hasData
+                              ? snapshot.data
+                              : "??\u{2192}??"))),
+                ),
+                IconButton(
+                  icon: Icon(Icons.timeline),
+                  onPressed: () => _bloc.toggleWay(),
+                ),
+                IconButton(
+                  icon: Icon(Icons.refresh),
+                  onPressed: () => _bloc.load(widget.transporter.id),
+                ),
+              ],
             ),
-            _ArrivalListView(
-              bloc: _bloc,
-            ),
-          ],
+          ),
         ),
-      ),
+        _ArrivalListView(
+          bloc: _bloc,
+        ),
+      ],
     );
   }
 
@@ -109,8 +106,8 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _bloc.errorStream.listen((e) {
-      _scaffoldKey.currentState.hideCurrentSnackBar();
-      _scaffoldKey.currentState.showSnackBar(SnackBar(
+      Scaffold.of(context).hideCurrentSnackBar();
+      Scaffold.of(context).showSnackBar(SnackBar(
         content: Text(e.message),
         duration: Duration(seconds: e.canRetry ? 15 : 3),
         action: e.canRetry
