@@ -5,9 +5,15 @@ import 'package:flutter/widgets.dart';
 
 class CoolDownWidget extends StatelessWidget {
   final double remaining;
-  final String text;
+  final String remainingText;
+  final String label;
 
-  CoolDownWidget({Key key, this.remaining, this.text = ""}) : super(key: key);
+  CoolDownWidget({
+    Key key,
+    this.label,
+    this.remaining,
+    this.remainingText = "",
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +24,7 @@ class CoolDownWidget extends StatelessWidget {
         child: Container(
           width: 56,
           height: 56,
+          color: Colors.white,
           child: Stack(alignment: Alignment.center, children: [
             SizedBox.expand(
                 child: CircularProgressIndicator(
@@ -25,9 +32,22 @@ class CoolDownWidget extends StatelessWidget {
             )),
             Center(
                 child: Text(
-              text,
+              remainingText,
               style: TextStyle(fontSize: 25),
             )),
+            Positioned(
+              top:3,
+              child: Container(
+                decoration: BoxDecoration(
+                    color: Colors.redAccent,
+                    borderRadius: BorderRadius.circular(5.0)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2.0),
+                    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold,
+                        color: Colors.white)),
+                  ),
+              ),
+            )
           ]),
         ),
       ),

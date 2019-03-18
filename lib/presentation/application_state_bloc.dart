@@ -2,62 +2,76 @@ import 'dart:ui';
 
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:stpt_arrivals/data/cool_down_data_source.dart';
+import 'package:stpt_arrivals/data/transporters_repository.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/restoring_cooldown_manager.dart';
 
 class ApplicationStateBloc {
-
   final RestoringCoolDownManager coolDownManager;
 
   final TimeProvider timeProvider;
 
-  ApplicationStateBloc(this.coolDownManager, this.timeProvider);
+  final TransportersRepository transportersRepository;
 
-  bool _isInCoolDown = false;
+  ApplicationStateBloc(
+      this.coolDownManager, this.timeProvider, this.transportersRepository);
 
-  Stream<CoolDown> remainingCoolDownStream() =>
-      Observable(coolDownManager.getLastCoolDown()).switchMap((time) {
-        return Observable.periodic(Duration(seconds: 1), (_) => createCoolDownFromTimeMillis(time))
-            .startWith(createCoolDownFromTimeMillis(time))
-            .takeWhile((cd) => cd.remainingSeconds >= 0)
-            .doOnData((_) => _isInCoolDown = true)
-            .doOnDone(() => _isInCoolDown = false);
-      }).share();
+  final _inCoolDownList = Set<String>();
 
-  CoolDown createCoolDownFromTimeMillis(int time) {
+  Stream<CoolDownUI> remainingCoolDownStream() =>
+      Observable(coolDownManager.getLastCoolDown())
+          .switchMap((cd) => Observable.fromFuture(
+                  transportersRepository.findById(cd.transporterId))
+              .map((t) => t.name)
+              .flatMap((name) => Observable.periodic(Duration(seconds: 1),
+                      (_) => _createCoolDownFromData(name, cd))
+                  .startWith(_createCoolDownFromData(name, cd))
+                  .takeWhile((cd) => cd.remainingSeconds >= 0)
+                  .doOnData((_) => _inCoolDownList.add(cd.transporterId)))
+                  .doOnDone(() => _inCoolDownList.remove(cd.transporterId)))
+          .share();
+
+  CoolDownUI _createCoolDownFromData(String name, CoolDownData data) {
     final now = timeProvider.timeMillis();
     final remainingSeconds =
-        coolDownManager.timeRemainingSeconds(time, now);
-    final percent = coolDownManager.timeRemainingPercent(time, now);
-    return CoolDown(remainingSeconds, percent);
+        coolDownManager.timeRemainingSeconds(data.timeMillis, now);
+    final percent = coolDownManager.timeRemainingPercent(data.timeMillis, now);
+    return CoolDownUI(name, remainingSeconds, percent);
   }
 
-  bool isInCoolDown() => _isInCoolDown;
+  switchLastCoolDown(String transporterId) {
+    coolDownManager.switchLastCoolDown(transporterId);
+  }
 
-  void dispose(){
+  bool isInCoolDown(String transporterId) => _inCoolDownList.contains(transporterId);
+
+  void dispose() {
     coolDownManager.dispose();
   }
-
 }
 
 @immutable
-class CoolDown {
-  static const noCoolDown = const CoolDown(-1, -1.0);
+class CoolDownUI {
+  static const noCoolDown = const CoolDownUI("", -1, -1.0);
 
+  final String transporterName;
   final int remainingSeconds;
   final double percent;
 
-  const CoolDown(this.remainingSeconds, this.percent);
+  const CoolDownUI(this.transporterName, this.remainingSeconds, this.percent);
 
   @override
-  String toString() => "CoolDown [remSec:$remainingSeconds, %:$percent]";
+  String toString() =>
+      "CoolDown [name:$transporterName, remSec:$remainingSeconds, %:$percent]";
 
   @override
   bool operator ==(other) =>
-      other is CoolDown &&
+      other is CoolDownUI &&
+      transporterName == other.transporterName &&
       remainingSeconds == other.remainingSeconds &&
       percent == other.percent;
 
   @override
-  int get hashCode => hashValues(remainingSeconds, percent);
+  int get hashCode => hashValues(transporterName, remainingSeconds, percent);
 }

@@ -1,27 +1,62 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-abstract class CoolDownDataSource{
+abstract class CoolDownDataSource {
+  Future<CoolDownData> loadLastCoolDown([String transporterId = ""]);
 
-  Future<int> loadLastCoolDown();
-
-  Future<void> retainLastCoolDown(int timeMillis);
-
+  Future<void> retainLastCoolDown(CoolDownData data);
 }
 
-class CoolDownDataSourceImpl implements CoolDownDataSource{
-
-  static const _restoringCoolDownKey = "RESTORING_COOLDOWN_KEY";
+class CoolDownDataSourceImpl implements CoolDownDataSource {
+  //static const _restoringCoolDownKey = "RESTORING_COOLDOWN_KEY";
+  static const _restoringCoolDownKey = "RESTORING_COOLDOWN_LIST_KEY";
 
   @override
-  Future<int> loadLastCoolDown() async {
+  Future<CoolDownData> loadLastCoolDown([String transporterId = ""]) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_restoringCoolDownKey) ?? 0;
+    final list = _getAll(prefs).toList();
+    final id = transporterId.trim();
+    if (id.isEmpty) {
+      list.sort();
+      return list.isEmpty ? CoolDownData.no_data : list.last;
+    } else {
+      return list.firstWhere((cd) => cd.transporterId == id) ??
+          CoolDownData(transporterId, 0);
+    }
   }
 
   @override
-  Future<void> retainLastCoolDown(int timeMillis) async {
+  Future<void> retainLastCoolDown(CoolDownData data) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_restoringCoolDownKey, timeMillis);
+    final list = _getAll(prefs)
+        .where((cd) => cd.transporterId != data.transporterId)
+        .toList();
+    list.add(data);
+    await prefs.setStringList(
+        _restoringCoolDownKey, list.map(_encode).toList());
   }
+
+  Iterable<CoolDownData> _getAll(SharedPreferences prefs) =>
+      (prefs.getStringList(_restoringCoolDownKey) ?? []).map(_decode);
+
+  String _encode(CoolDownData data) =>
+      "${data.transporterId}:${data.timeMillis}";
+
+  CoolDownData _decode(String data) {
+    final split = data.split(":");
+    return CoolDownData(split[0], int.parse(split[1]));
+  }
+}
+
+class CoolDownData {
+  static const no_data = CoolDownData("", 0);
+
+  final String transporterId;
+  final int timeMillis;
+
+  const CoolDownData(this.transporterId, this.timeMillis);
+
+  @override
+  String toString() =>"CoolDownData[id:$transporterId, time:$timeMillis]";
+
 
 }

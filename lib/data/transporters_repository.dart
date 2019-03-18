@@ -13,6 +13,8 @@ abstract class TransportersRepository {
 
   Future<List<Transporter>> findAllByFavorites();
 
+  Future<Transporter> findById(String transporterId);
+
   Future<void> save(List<Transporter> transporters);
 
   Future<void> update(Transporter transporter);
@@ -99,4 +101,8 @@ class TransportersRepositoryImpl implements TransportersRepository {
     _transporters.removeAt(index);
     _transporters.insert(index, transporter);
   }
+
+  @override
+  Future<Transporter> findById(String transporterId) async =>
+      _transporters.firstWhere((t) => t.id == transporterId);
 }

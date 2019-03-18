@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:stpt_arrivals/data/cool_down_data_source.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
 import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/presentation/arrivals/arrival_ui.dart';
@@ -168,9 +169,10 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
           .map((route) => ArrivalState.partialRoute(route))
           .flatMap((state) =>
           Observable.fromFuture(
-              _coolDownManager.saveLastCoolDown(action.time))
+              _coolDownManager.saveLastCoolDown(CoolDownData(action.transporterId, action.time)))
               .map((_) => state))
-          .doOnError((e, __) {
+          .doOnError((e, stack) {
+            print(stack);
         _errorStream.add(_errorMapper(e));
         _actionLoadSubject.add(_Action.idle);
       })

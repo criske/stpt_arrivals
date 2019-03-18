@@ -1,14 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:http/http.dart';
-import 'package:stpt_arrivals/data/favorites_data_source.dart';
-import 'package:stpt_arrivals/data/transporters_data_source.dart';
-import 'package:stpt_arrivals/data/transporters_repository.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/transporters/transporters_bloc.dart';
-import 'package:stpt_arrivals/services/parser/transporter_parser.dart';
-import 'package:stpt_arrivals/services/remote_config.dart';
-import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
 import 'package:stpt_arrivals/ui/application_state_widget.dart';
 
 class TransportersScreen extends StatefulWidget {
@@ -18,14 +11,14 @@ class TransportersScreen extends StatefulWidget {
 
 class _TransportersScreenState extends State<TransportersScreen> {
   TransportersBloc _bloc;
+
   var _selectedDropFilter = PrettyTransporterBlocFilter();
 
-  _TransportersScreenState() {
-    _bloc = TransportersBlocImpl(TransportersRepositoryImpl(
-        FavoritesDataSourceImpl(),
-        TransportersDataSourceImpl(),
-        TransportersTypeFetcherImpl(
-            RemoteConfigImpl(), Client(), TransporterParserImpl())));
+  @override
+  void initState() {
+    super.initState();
+    _bloc = TransportersBlocImpl(
+        ApplicationStateWidget.of(context).bloc.transportersRepository);
   }
 
   @override
@@ -44,11 +37,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
                 children: <Widget>[
                   Padding(
                       padding: EdgeInsets.all(4),
-                      child: Text(
-                        "Filter",
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      )),
+                      child: Icon(Icons.filter_list)),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -101,6 +90,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
                                       ApplicationStateWidget.of(context)
                                           .tryAction(
                                               context,
+                                              t.id,
                                               () => Navigator.pushNamed(
                                                   context, "/arrivals",
                                                   arguments: t));
@@ -198,8 +188,8 @@ class _TransporterWidget extends StatelessWidget {
                     transporter.name,
                     style: TextStyle(
                         fontWeight: FontWeight.normal,
-                        fontSize: 28,
-                        color: Colors.black87),
+                        fontSize: 22,
+                        color: Colors.black54),
                   ),
                 ),
               ),

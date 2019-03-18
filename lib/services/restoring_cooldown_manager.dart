@@ -6,11 +6,11 @@ import 'package:stpt_arrivals/data/cool_down_data_source.dart';
 abstract class RestoringCoolDownManager {
   static const Duration coolDownThreshold = const Duration(seconds: 30);
 
-  Stream<int> getLastCoolDown();
+  Stream<CoolDownData> getLastCoolDown();
 
-  Stream<Duration> getLastCoolDownDuration();
+  Future<void> saveLastCoolDown(CoolDownData data);
 
-  Future<void> saveLastCoolDown(int timeMillis);
+  void switchLastCoolDown(String transporterId);
 
   void dispose();
 
@@ -28,31 +28,32 @@ abstract class RestoringCoolDownManager {
 }
 
 class RestoringCoolDownManagerImpl extends RestoringCoolDownManager {
-
   CoolDownDataSource coolDownDataSource;
 
-  BehaviorSubject<int> _subjectLastCoolDown = BehaviorSubject();
+  BehaviorSubject<String> _subjectLastCoolDown = BehaviorSubject()..add("");
 
-  StreamSubscription<int> _subscriptionLastCoolDown;
+  StreamSubscription<CoolDownData> _subscriptionLastCoolDown;
 
-  RestoringCoolDownManagerImpl(CoolDownDataSource coolDownDataSource){
+  RestoringCoolDownManagerImpl(CoolDownDataSource coolDownDataSource) {
     this.coolDownDataSource = coolDownDataSource;
-    _subscriptionLastCoolDown = Observable.fromFuture(coolDownDataSource.loadLastCoolDown())
-        .listen((t)=> _subjectLastCoolDown.add(t));
   }
 
+  @override
+  Stream<CoolDownData> getLastCoolDown() => _subjectLastCoolDown.switchMap(
+      (id) {
+        return Observable.fromFuture(coolDownDataSource.loadLastCoolDown(id))
+            .doOnData((print));
+      });
 
   @override
-  Stream<int> getLastCoolDown() => _subjectLastCoolDown.stream;
+  void switchLastCoolDown(String transporterId) {
+    _subjectLastCoolDown.add(transporterId);
+  }
 
   @override
-  Stream<Duration> getLastCoolDownDuration() =>
-      getLastCoolDown().map((timeMillis) => Duration(milliseconds: timeMillis));
-
-  @override
-  Future<void> saveLastCoolDown(int timeMillis) async {
-    _subjectLastCoolDown.add(timeMillis);
-    await coolDownDataSource.retainLastCoolDown(timeMillis);
+  Future<void> saveLastCoolDown(CoolDownData data) async {
+    await coolDownDataSource.retainLastCoolDown(data);
+    _subjectLastCoolDown.add(data.transporterId);
   }
 
   @override

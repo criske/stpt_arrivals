@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/arrivals/arrival_display_bloc.dart';
 import 'package:stpt_arrivals/presentation/arrivals/arrival_ui.dart';
 import 'package:stpt_arrivals/presentation/arrivals/time_ui_converter.dart';
 import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
-import 'package:stpt_arrivals/services/remote_config.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 import 'package:stpt_arrivals/ui/application_state_widget.dart';
 
@@ -22,26 +20,27 @@ class ArrivalDisplayScreen extends StatefulWidget {
 class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
   ArrivalDisplayBloc _bloc;
 
-  _ArrivalDisplayScreenState():super();
+  _ArrivalDisplayScreenState() : super();
 
   @override
   void initState() {
     super.initState();
-    final timeProvider =ApplicationStateWidget
-        .of(context)
-        .bloc
-        .timeProvider;
+    var stateWidget = ApplicationStateWidget.of(context);
+
+    final timeProvider = stateWidget.bloc.timeProvider;
     final timeConverter = ArrivalTimeConverterImpl(timeProvider);
-    final restoringCoolDownManager = ApplicationStateWidget
-        .of(context)
-        .bloc
-        .coolDownManager;
+    final restoringCoolDownManager = stateWidget.bloc.coolDownManager;
+
+    final config = ApplicationStateWidget.config;
+    final client = ApplicationStateWidget.client;
+
     _bloc = ArrivalDisplayBlocImpl(
         timeProvider,
         TimeUIConverterImpl(),
-        RouteArrivalFetcher(RouteArrivalParserImpl(timeConverter),
-            RemoteConfigImpl(), Client()),
+        RouteArrivalFetcher(
+            RouteArrivalParserImpl(timeConverter), config, client),
         restoringCoolDownManager);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _bloc.load(widget.transporter.id);
     });
@@ -80,12 +79,11 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                 ),
                 StreamBuilder(
                   stream: _bloc.wayNameStream,
-                  builder: (context, snapshot) =>
-                      Expanded(
-                          child: Center(
-                              child: Text(snapshot.hasData
-                                  ? snapshot.data
-                                  : "??\u{2192}??"))),
+                  builder: (context, snapshot) => Expanded(
+                      child: Center(
+                          child: Text(snapshot.hasData
+                              ? snapshot.data
+                              : "??\u{2192}??"))),
                 ),
                 IconButton(
                   icon: Icon(Icons.timeline),
@@ -93,8 +91,8 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                 ),
                 IconButton(
                   icon: Icon(Icons.refresh),
-                  onPressed: () => ApplicationStateWidget.of(context)
-                        .tryAction(context, () => _bloc.load(widget.transporter.id)),
+                  onPressed: () => ApplicationStateWidget.of(context).tryAction(
+                      context, widget.transporter.id, () => _bloc.load(widget.transporter.id)),
                 ),
               ],
             ),
@@ -117,8 +115,8 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
         duration: Duration(seconds: e.canRetry ? 15 : 3),
         action: e.canRetry
             ? SnackBarAction(
-            label: "RETRY",
-            onPressed: () => _bloc.load(widget.transporter.id))
+                label: "RETRY",
+                onPressed: () => _bloc.load(widget.transporter.id))
             : null,
       ));
     });
@@ -176,10 +174,9 @@ class _ArrivalListView extends StatelessWidget {
               }),
           StreamBuilder(
             stream: bloc.loadingStream,
-            builder: (context, snapshot) =>
-                Opacity(
+            builder: (context, snapshot) => Opacity(
                   opacity:
-                  snapshot.hasData ? (snapshot.data as bool) ? 1 : 0 : 0,
+                      snapshot.hasData ? (snapshot.data as bool) ? 1 : 0 : 0,
                   child: Align(child: CircularProgressIndicator()),
                 ),
           )
