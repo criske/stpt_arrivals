@@ -91,8 +91,8 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                 ),
                 IconButton(
                   icon: Icon(Icons.refresh),
-                  onPressed: () => ApplicationStateWidget.of(context).tryAction(
-                      context, widget.transporter.id, () => _bloc.load(widget.transporter.id)),
+                  onPressed: () async => ApplicationStateWidget.of(context).tryAction(
+                      context, "", () => _bloc.load(widget.transporter.id)),
                 ),
               ],
             ),

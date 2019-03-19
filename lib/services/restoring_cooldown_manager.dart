@@ -8,6 +8,8 @@ abstract class RestoringCoolDownManager {
 
   Stream<CoolDownData> getLastCoolDown();
 
+  Future<bool> isInCoolDown(String transporterId, int nowMillis);
+
   Future<void> saveLastCoolDown(CoolDownData data);
 
   void switchLastCoolDown(String transporterId);
@@ -17,32 +19,31 @@ abstract class RestoringCoolDownManager {
   int timeRemainingSeconds(int lastTimeMillis, int nowMillis) {
     var remaining = RestoringCoolDownManager.coolDownThreshold.inSeconds -
         (Duration(milliseconds: nowMillis) -
-                Duration(milliseconds: lastTimeMillis))
+            Duration(milliseconds: lastTimeMillis))
             .inSeconds;
     return remaining;
   }
 
   double timeRemainingPercent(int lastTimeMillis, int nowMillis) =>
       timeRemainingSeconds(lastTimeMillis, nowMillis) /
-      coolDownThreshold.inSeconds;
+          coolDownThreshold.inSeconds;
 }
 
 class RestoringCoolDownManagerImpl extends RestoringCoolDownManager {
   CoolDownDataSource coolDownDataSource;
 
-  BehaviorSubject<String> _subjectLastCoolDown = BehaviorSubject()..add("");
+  BehaviorSubject<String> _subjectLastCoolDown = BehaviorSubject()
+    ..add("");
 
-  StreamSubscription<CoolDownData> _subscriptionLastCoolDown;
 
   RestoringCoolDownManagerImpl(CoolDownDataSource coolDownDataSource) {
     this.coolDownDataSource = coolDownDataSource;
   }
 
   @override
-  Stream<CoolDownData> getLastCoolDown() => _subjectLastCoolDown.switchMap(
-      (id) {
-        return Observable.fromFuture(coolDownDataSource.loadLastCoolDown(id))
-            .doOnData((print));
+  Stream<CoolDownData> getLastCoolDown() =>
+      _subjectLastCoolDown.switchMap((id) {
+        return Observable.fromFuture(coolDownDataSource.loadLastCoolDown(id));
       });
 
   @override
@@ -57,8 +58,13 @@ class RestoringCoolDownManagerImpl extends RestoringCoolDownManager {
   }
 
   @override
+  Future<bool> isInCoolDown(String transporterId, int nowMillis) async {
+    final cd = await coolDownDataSource.loadLastCoolDown(transporterId);
+    return timeRemainingSeconds(cd.timeMillis, nowMillis) > 0;
+  }
+
+  @override
   void dispose() {
     _subjectLastCoolDown.close();
-    _subscriptionLastCoolDown.cancel();
   }
 }

@@ -19,6 +19,10 @@ class _TransportersScreenState extends State<TransportersScreen> {
     super.initState();
     _bloc = TransportersBlocImpl(
         ApplicationStateWidget.of(context).bloc.transportersRepository);
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      ApplicationStateWidget.of(context).bloc.switchLastCoolDown();
+    });
+
   }
 
   @override
@@ -86,7 +90,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
                           children: snapshot.data
                               .map((t) => _TransporterWidget(
                                     transporter: t,
-                                    onSelect: (t) {
+                                    onSelect: (t) async {
                                       ApplicationStateWidget.of(context)
                                           .tryAction(
                                               context,

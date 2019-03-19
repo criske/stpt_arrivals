@@ -17,16 +17,15 @@ import 'package:stpt_arrivals/ui/cool_down_widget.dart';
 import 'package:stpt_arrivals/ui/transporters_screen.dart';
 
 class ApplicationStateWidget extends StatefulWidget {
-
   static final RemoteConfig config = RemoteConfigImpl();
 
   static final Client client = Client();
 
-  static final TransportersRepository transporterRepository = TransportersRepositoryImpl(
-      FavoritesDataSourceImpl(),
-      TransportersDataSourceImpl(),
-      TransportersTypeFetcherImpl(
-          config, client, TransporterParserImpl()));
+  static final TransportersRepository transporterRepository =
+      TransportersRepositoryImpl(
+          FavoritesDataSourceImpl(),
+          TransportersDataSourceImpl(),
+          TransportersTypeFetcherImpl(config, client, TransporterParserImpl()));
 
   ApplicationStateBloc bloc = ApplicationStateBloc(
     RestoringCoolDownManagerImpl(CoolDownDataSourceImpl()),
@@ -39,19 +38,17 @@ class ApplicationStateWidget extends StatefulWidget {
   @override
   _ApplicationStateWidgetState createState() => _ApplicationStateWidgetState();
 
-  tryAction(BuildContext context, String transporterId, VoidCallback action) {
+  tryAction(
+      BuildContext context, String transporterId, VoidCallback action) async {
     bloc.switchLastCoolDown(transporterId);
-    //todo crappy approach to forward an action
-    Future.delayed(Duration(milliseconds: 500), (){
-      if (bloc.isInCoolDown(transporterId)) {
-        Scaffold.of(context).hideCurrentSnackBar();
-        Scaffold.of(context).showSnackBar(SnackBar(
-            content: Text("Wait for cool down to end"),
-            duration: Duration(seconds: 1)));
-      } else {
-        action();
-      }
-    });
+    if (await bloc.isInCoolDown(transporterId)) {
+      Scaffold.of(context).hideCurrentSnackBar();
+      Scaffold.of(context).showSnackBar(SnackBar(
+          content: Text("Wait for cool down to end"),
+          duration: Duration(seconds: 1)));
+    } else {
+      action();
+    }
   }
 
   static ApplicationStateWidget of(BuildContext context) {

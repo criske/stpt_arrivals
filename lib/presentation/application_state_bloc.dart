@@ -17,8 +17,6 @@ class ApplicationStateBloc {
   ApplicationStateBloc(
       this.coolDownManager, this.timeProvider, this.transportersRepository);
 
-  final _inCoolDownList = Set<String>();
-
   Stream<CoolDownUI> remainingCoolDownStream() =>
       Observable(coolDownManager.getLastCoolDown())
           .switchMap((cd) => Observable.fromFuture(
@@ -27,9 +25,7 @@ class ApplicationStateBloc {
               .flatMap((name) => Observable.periodic(Duration(seconds: 1),
                       (_) => _createCoolDownFromData(name, cd))
                   .startWith(_createCoolDownFromData(name, cd))
-                  .takeWhile((cd) => cd.remainingSeconds >= 0)
-                  .doOnData((_) => _inCoolDownList.add(cd.transporterId)))
-                  .doOnDone(() => _inCoolDownList.remove(cd.transporterId)))
+                  .takeWhile((cd) => cd.remainingSeconds >= 0)))
           .share();
 
   CoolDownUI _createCoolDownFromData(String name, CoolDownData data) {
@@ -40,11 +36,12 @@ class ApplicationStateBloc {
     return CoolDownUI(name, remainingSeconds, percent);
   }
 
-  switchLastCoolDown(String transporterId) {
+  switchLastCoolDown([String transporterId = ""]) {
     coolDownManager.switchLastCoolDown(transporterId);
   }
 
-  bool isInCoolDown(String transporterId) => _inCoolDownList.contains(transporterId);
+  Future<bool> isInCoolDown(String transporterId) async => await coolDownManager
+      .isInCoolDown(transporterId, timeProvider.timeMillis());
 
   void dispose() {
     coolDownManager.dispose();

@@ -16,11 +16,12 @@ class CoolDownDataSourceImpl implements CoolDownDataSource {
     final list = _getAll(prefs).toList();
     final id = transporterId.trim();
     if (id.isEmpty) {
-      list.sort();
-      return list.isEmpty ? CoolDownData.no_data : list.last;
+      //sort descending => b compareTo a (asc will a compare to b
+      list.sort((a, b) =>  b.timeMillis.compareTo(a.timeMillis));
+      return list.isEmpty ? CoolDownData.no_data : list.first;
     } else {
-      return list.firstWhere((cd) => cd.transporterId == id) ??
-          CoolDownData(transporterId, 0);
+      return list.firstWhere((cd) => cd.transporterId == id,
+          orElse: () => CoolDownData(transporterId, 0));
     }
   }
 
@@ -56,7 +57,5 @@ class CoolDownData {
   const CoolDownData(this.transporterId, this.timeMillis);
 
   @override
-  String toString() =>"CoolDownData[id:$transporterId, time:$timeMillis]";
-
-
+  String toString() => "CoolDownData[id:$transporterId, time:$timeMillis]";
 }
