@@ -27,7 +27,7 @@ class ApplicationStateWidget extends StatefulWidget {
           TransportersDataSourceImpl(),
           TransportersTypeFetcherImpl(config, client, TransporterParserImpl()));
 
-  ApplicationStateBloc bloc = ApplicationStateBloc(
+  final bloc = ApplicationStateBloc(
     RestoringCoolDownManagerImpl(CoolDownDataSourceImpl()),
     SystemTimeProvider(),
     transporterRepository,
@@ -44,7 +44,7 @@ class ApplicationStateWidget extends StatefulWidget {
     if (await bloc.isInCoolDown(transporterId)) {
       Scaffold.of(context).hideCurrentSnackBar();
       Scaffold.of(context).showSnackBar(SnackBar(
-          content: Text("Wait for cool down to end"),
+          content: Text("Mai asteptati putin..."),
           duration: Duration(seconds: 1)));
     } else {
       action();
@@ -101,11 +101,14 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
         stream: widget.bloc.remainingCoolDownStream(),
         builder: (context, snapshot) {
           return snapshot.hasData
-              ? CoolDownWidget(
-                  label: snapshot.data.transporterName,
-                  remaining: snapshot.data.percent,
-                  remainingText: snapshot.data.remainingSeconds.toString(),
-                )
+              ? Container(
+                  width: 80,
+                  height: 80,
+                  child: CoolDownWidget(
+                    label: snapshot.data.transporterName,
+                    remaining: snapshot.data.percent,
+                    remainingText: snapshot.data.remainingSeconds.toString(),
+                  ))
               : Container();
         });
   }

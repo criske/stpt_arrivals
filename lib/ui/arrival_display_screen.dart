@@ -1,3 +1,4 @@
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/arrivals/arrival_display_bloc.dart';
@@ -69,10 +70,10 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white)),
                       ),
-                      constraints: BoxConstraints(minWidth: 28, maxHeight: 28),
+                      constraints: BoxConstraints(minWidth: 20, maxHeight: 20),
                     ),
                     decoration: BoxDecoration(
-                        color: Colors.black87,
+                        color: Colors.black54,
                         borderRadius: BorderRadius.all(Radius.circular(5.0))),
                   ),
                   onTap: () => Navigator.of(context).pop(),
@@ -81,9 +82,14 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                   stream: _bloc.wayNameStream,
                   builder: (context, snapshot) => Expanded(
                       child: Center(
-                          child: Text(snapshot.hasData
+                          child: AutoSizeText(snapshot.hasData
                               ? snapshot.data
-                              : "??\u{2192}??"))),
+                              : "??\u{2192}??",
+                            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+                            maxFontSize: 20,
+                            minFontSize: 10,
+                            maxLines: 1,
+                          ))),
                 ),
                 IconButton(
                   icon: Icon(Icons.timeline),
@@ -91,8 +97,9 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                 ),
                 IconButton(
                   icon: Icon(Icons.refresh),
-                  onPressed: () async => ApplicationStateWidget.of(context).tryAction(
-                      context, "", () => _bloc.load(widget.transporter.id)),
+                  onPressed: () async => ApplicationStateWidget.of(context)
+                      .tryAction(
+                          context, "", () => _bloc.load(widget.transporter.id)),
                 ),
               ],
             ),
@@ -150,24 +157,40 @@ class _ArrivalListView extends StatelessWidget {
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
                   final arrivals = snapshot.data as List<ArrivalUI>;
-                  return ListView.builder(
-                      itemCount: arrivals.length,
-                      itemBuilder: (context, position) {
-                        final arrival = arrivals.elementAt(position);
-                        return Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: <Widget>[
-                                Text("${arrival.stationName}",
-                                    style: TextStyle(fontSize: 14.0)),
-                                Text("${arrival.time1.value}",
-                                    style: TextStyle(
-                                        fontSize: 14.0,
-                                        color: Color(arrival.time1.color))),
-                              ],
-                            ));
-                      });
+                  return Padding(
+                    padding: const EdgeInsets.only(top:8),
+                    child: ListView.separated(
+                      separatorBuilder: (context, index) => Divider(
+                        color: Colors.black26,
+                      ),
+                        itemCount: arrivals.length,
+                        itemBuilder: (context, position) {
+                          final arrival = arrivals.elementAt(position);
+                          return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: <Widget>[
+                                  Text("${arrival.stationName}",
+                                      style: TextStyle(fontSize: 14.0)),
+                                  DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      color: Color(arrival.time1.backgroundColor),
+                                      borderRadius: BorderRadius.all(Radius.circular(5))
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4.0),
+                                      child: Text("${arrival.time1.value}",
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                              color: Color(arrival.time1.color),
+                                              fontSize: 14.0),
+                                      ),
+                                    ),
+                                  )],
+                              ));
+                        }),
+                  );
                 } else {
                   return Container();
                 }

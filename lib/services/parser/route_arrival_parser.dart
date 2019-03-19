@@ -71,6 +71,7 @@ class RouteArrivalParserImpl implements RouteArrivalParser {
       .getElementsByTagName("b")
       .first
       .text
+      .replaceAll("_", " ")
       .trim();
 }
 

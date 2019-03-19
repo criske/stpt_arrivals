@@ -24,8 +24,9 @@ class ArrivalUI {
 class TimeUI {
   final String value;
   final int color;
+  final int backgroundColor;
 
-  const TimeUI(this.value, [this.color = 0xFF000000]);
+  const TimeUI(this.value, [this.color = 0xFF000000, this.backgroundColor = 0x00FFFFFF]);
 
   factory TimeUI.none([String nonValue = "**:**"]) => TimeUI(nonValue);
 }

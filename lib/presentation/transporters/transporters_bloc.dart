@@ -9,7 +9,7 @@ abstract class TransportersBloc implements DisposableBloc {
   final Stream<List<Transporter>> transportersStream = Stream.empty();
 
   final Stream<PrettyTransporterBlocFilter> selectedFilterStream =
-      Stream.empty();
+  Stream.empty();
 
   final Stream<bool> loadingStream = Stream.empty();
 
@@ -22,11 +22,11 @@ abstract class TransportersBloc implements DisposableBloc {
 
 enum TransporterBlocFilter {
   ALL,
+  FAVORITE,
   BUS,
-  BOAT,
   TRAM,
   TROLLEY,
-  FAVORITE,
+  BOAT,
 }
 
 class PrettyTransporterBlocFilter {
@@ -48,9 +48,29 @@ class PrettyTransporterBlocFilter {
 Iterable<PrettyTransporterBlocFilter> prettyTransporterBlocFilterValues() =>
     TransporterBlocFilter.values.map((f) => PrettyTransporterBlocFilter(f));
 
-_prettyTransporterBlocFilter(TransporterBlocFilter filter) {
-  final val = filter.toString().split("TransporterBlocFilter.")[1];
-  return val[0] + val.substring(1).toLowerCase();
+String _prettyTransporterBlocFilter(TransporterBlocFilter filter) {
+  var pretty;
+  switch (filter) {
+    case TransporterBlocFilter.ALL:
+      pretty = "Toate";
+      break;
+    case TransporterBlocFilter.BUS:
+      pretty = "Autobuze";
+      break;
+    case TransporterBlocFilter.TRAM:
+      pretty = "Tramvaie";
+      break;
+    case TransporterBlocFilter.TROLLEY:
+      pretty = "Troleibuze";
+      break;
+    case TransporterBlocFilter.BOAT:
+      pretty = "Vaporetto";
+      break;
+    case TransporterBlocFilter.FAVORITE:
+      pretty = "Favorite";
+      break;
+  }
+  return pretty;
 }
 
 class TransportersBlocImpl implements TransportersBloc {
@@ -58,8 +78,8 @@ class TransportersBlocImpl implements TransportersBloc {
     ..add(_ActionAll());
 
   final BehaviorSubject<PrettyTransporterBlocFilter> _selectedFilterSubject =
-      BehaviorSubject()
-        ..add(PrettyTransporterBlocFilter(TransporterBlocFilter.ALL));
+  BehaviorSubject()
+    ..add(PrettyTransporterBlocFilter(TransporterBlocFilter.ALL));
 
   TransportersRepository _repository;
 
@@ -69,17 +89,18 @@ class TransportersBlocImpl implements TransportersBloc {
     this._repository = repository;
     _stateObservable = _actionsSubject
         .switchMap((action) {
-          if (action is _ActionUpdate) {
-            return Observable.fromFuture(_repository.update(action.transporter))
-                .concatMap((_) => _findTransportersByAction(action.lastAction)
-                        .startWith(_ResultLoading.inst)
-                        .onErrorReturnWith((e)=>_ResultError(e)));
-          } else {
-            return _findTransportersByAction(action)
+      if (action is _ActionUpdate) {
+        return Observable.fromFuture(_repository.update(action.transporter))
+            .concatMap((_) =>
+            _findTransportersByAction(action.lastAction)
                 .startWith(_ResultLoading.inst)
-                .onErrorReturnWith((e)=>_ResultError(e));
-          }
-        })
+                .onErrorReturnWith((e) => _ResultError(e)));
+      } else {
+        return _findTransportersByAction(action)
+            .startWith(_ResultLoading.inst)
+            .onErrorReturnWith((e) => _ResultError(e));
+      }
+    })
         .scan(_stateReducer, _State.init)
         .share();
   }
@@ -223,6 +244,7 @@ class _ResultLoading implements _Result {
 
 class _ResultError implements _Result {
   final dynamic err;
+
   _ResultError(this.err);
 }
 

@@ -16,7 +16,7 @@ class CoolDownDataSourceImpl implements CoolDownDataSource {
     final list = _getAll(prefs).toList();
     final id = transporterId.trim();
     if (id.isEmpty) {
-      //sort descending => b compareTo a (asc will a compare to b
+      //sort descending => b compareTo a (asc will a compareTo b)
       list.sort((a, b) =>  b.timeMillis.compareTo(a.timeMillis));
       return list.isEmpty ? CoolDownData.no_data : list.first;
     } else {

@@ -21,15 +21,18 @@ class TimeUIConverterImpl implements TimeUIConverter {
   TimeUI toUI(Time time) {
     if (time == null) return TimeUI.none("**:**");
     var proximityColor = defaultColor;
+    var proximityColorBg = 0x00FFFFFF;
     if (time.isInProximity) {
       final time1Diff = Duration(milliseconds: time.offsetToNowMillis).inMinutes;
       if (time1Diff < 5) {
-        proximityColor = closeColor;
+        proximityColor = 0xFFFFFFFF;
+        proximityColorBg = closeColor;
       } else if (time1Diff >= 5 && time1Diff < 10) {
-        proximityColor = mediumFarColor;
+        proximityColor = 0xFFFFFFFF;
+        proximityColorBg = mediumFarColor;
       }
     }
-    return TimeUI(_toReadableTime(time.millis, "HH:mm"), proximityColor);
+    return TimeUI(_toReadableTime(time.millis, "HH:mm"), proximityColor,  proximityColorBg);
   }
 
   String _toReadableTime(int timeMillis,

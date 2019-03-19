@@ -84,9 +84,9 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
 
   @override
   void dispose() {
-    _actionLoadSubject.sink.close();
-    _actionToggleSubject.sink.close();
-    _actionCancelSubject.sink.close();
+    _actionLoadSubject.close();
+    _actionToggleSubject.close();
+    _actionCancelSubject.close();
   }
 
   @override
