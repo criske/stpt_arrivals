@@ -22,10 +22,10 @@ class ApplicationStateWidget extends StatefulWidget {
   static final Client client = Client();
 
   static final TransportersRepository transporterRepository =
-      TransportersRepositoryImpl(
-          FavoritesDataSourceImpl(),
-          TransportersDataSourceImpl(),
-          TransportersTypeFetcherImpl(config, client, TransporterParserImpl()));
+  TransportersRepositoryImpl(
+      FavoritesDataSourceImpl(),
+      TransportersDataSourceImpl(),
+      TransportersTypeFetcherImpl(config, client, TransporterParserImpl()));
 
   final bloc = ApplicationStateBloc(
     RestoringCoolDownManagerImpl(CoolDownDataSourceImpl()),
@@ -38,8 +38,8 @@ class ApplicationStateWidget extends StatefulWidget {
   @override
   _ApplicationStateWidgetState createState() => _ApplicationStateWidgetState();
 
-  tryAction(
-      BuildContext context, String transporterId, VoidCallback action) async {
+  tryAction(BuildContext context, String transporterId,
+      VoidCallback action) async {
     bloc.switchLastCoolDown(transporterId);
     if (await bloc.isInCoolDown(transporterId)) {
       Scaffold.of(context).hideCurrentSnackBar();
@@ -53,8 +53,8 @@ class ApplicationStateWidget extends StatefulWidget {
 
   static ApplicationStateWidget of(BuildContext context) {
     var inheritFromWidgetOfExactType =
-        context.ancestorWidgetOfExactType(ApplicationStateWidget)
-            as ApplicationStateWidget;
+    context.ancestorWidgetOfExactType(ApplicationStateWidget)
+    as ApplicationStateWidget;
     return inheritFromWidgetOfExactType;
   }
 }
@@ -62,39 +62,52 @@ class ApplicationStateWidget extends StatefulWidget {
 class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
 
+  bool accepted = false;
+
   @override
-  Widget build(BuildContext context) => WillPopScope(
-      onWillPop: () async {
-        final navigatorState = navigatorKey.currentState;
-        return navigatorState.canPop() ? !navigatorState.pop() : true;
-      },
-      child: Scaffold(
-        body: SafeArea(
-          child: Navigator(
-            key: navigatorKey,
-            initialRoute: "/",
-            onGenerateRoute: (settings) {
-              WidgetBuilder builder;
-              switch (settings.name) {
-                case "/":
-                  builder = (BuildContext _) => TransportersScreen();
-                  break;
-                case "/arrivals":
-                  {
-                    final transporter = settings.arguments as Transporter;
-                    builder =
-                        (BuildContext _) => ArrivalDisplayScreen(transporter);
-                    break;
-                  }
-                default:
-                  throw Exception('Invalid route: ${settings.name}');
-              }
-              return MaterialPageRoute(builder: builder, settings: settings);
-            },
-          ),
-        ),
-        floatingActionButton: _buildCoolDownWidget(),
-      ));
+  Widget build(BuildContext context) =>
+      WillPopScope(
+          onWillPop: () async {
+            final navigatorState = navigatorKey.currentState;
+            return navigatorState.canPop() ? !navigatorState.pop() : true;
+          },
+          child: Scaffold(
+            body: SafeArea(
+              child: Stack(
+                children: [
+                  Navigator(
+                    key: navigatorKey,
+                    initialRoute: "/",
+                    onGenerateRoute: (settings) {
+                      WidgetBuilder builder;
+                      switch (settings.name) {
+                        case "/":
+                          builder = (BuildContext _) => TransportersScreen();
+                          break;
+                        case "/arrivals":
+                          {
+                            final transporter = settings
+                                .arguments as Transporter;
+                            builder = (BuildContext _) =>
+                                ArrivalDisplayScreen(transporter);
+                            break;
+                          }
+                        default:
+                          throw Exception('Invalid route: ${settings.name}');
+                      }
+                      return MaterialPageRoute(
+                          builder: builder, settings: settings);
+                    },
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: _buildCoolDownWidget(),
+                  ),
+                ],
+              ),
+            ),
+          ));
 
   StreamBuilder<CoolDownUI> _buildCoolDownWidget() {
     return StreamBuilder<CoolDownUI>(
@@ -102,13 +115,13 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
         builder: (context, snapshot) {
           return snapshot.hasData
               ? Container(
-                  width: 80,
-                  height: 80,
-                  child: CoolDownWidget(
-                    label: snapshot.data.transporterName,
-                    remaining: snapshot.data.percent,
-                    remainingText: snapshot.data.remainingSeconds.toString(),
-                  ))
+              width: 80,
+              height: 80,
+              child: CoolDownWidget(
+                label: snapshot.data.transporterName,
+                remaining: snapshot.data.percent,
+                remainingText: snapshot.data.remainingSeconds.toString(),
+              ))
               : Container();
         });
   }

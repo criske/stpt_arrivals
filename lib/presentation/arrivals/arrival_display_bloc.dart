@@ -51,8 +51,7 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   ArrivalDisplayBlocImpl(this._timeProvider, this._timeUIConverter,
       this._arrivalFetcher, this._coolDownManager,
       [this._initialState]) {
-   final loadStream = _actionLoadSubject.stream
-        .scan(_coolDownController, _Action.idle);
+   final loadStream = _actionLoadSubject.stream;
     var toggleStream = _actionToggleSubject.stream;
     _stateObservable = Observable.merge([loadStream, toggleStream])
         .flatMap(_actionController)
@@ -143,23 +142,6 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
           .getWay()
           .name).distinct();
 
-  _Action _coolDownController(acc, curr, _) {
-    if (acc is _ActionIdle || curr is _ActionIdle || curr is _ActionCoolDown) {
-      return curr;
-    } else {
-      final timeDiff =
-          Duration(milliseconds: curr.time) - Duration(milliseconds: acc.time);
-      if (timeDiff < RestoringCoolDownManager.coolDownThreshold) {
-        return _ActionCoolDown(
-            acc.time,
-            RestoringCoolDownManager.coolDownThreshold.inSeconds -
-                timeDiff.inSeconds);
-      } else {
-        return curr;
-      }
-    }
-  }
-
   Stream<ArrivalState> _actionController(action) {
     if (action is _ActionIdle) {
       return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE));
@@ -180,13 +162,7 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
           .startWith(ArrivalState.partialFlag(StateFlag.LOADING))
           .takeUntil(_actionCancelSubject.stream
           .doOnData((_) => _actionLoadSubject.add(_Action.idle)));
-    } else if (action is _ActionCoolDown) {
-      return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE)).doOnData(
-              (_) =>
-              _errorStream.add(ErrorUI(
-                  "Wait ${action
-                      .remainingSeconds} more seconds and then try again")));
-    } else if (action is _ActionToggle) {
+    }else if (action is _ActionToggle) {
       return Observable.just(ArrivalState.partialFlag(StateFlag.TOGGLE));
     } else {
       return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE)).doOnData(
@@ -237,13 +213,6 @@ class _ActionLoad extends _Action {
 @immutable
 class _ActionCancel extends _Action {
   const _ActionCancel(time) : super(time);
-}
-
-@immutable
-class _ActionCoolDown extends _Action {
-  final int remainingSeconds;
-
-  const _ActionCoolDown(time, this.remainingSeconds) : super(time);
 }
 
 @immutable

@@ -26,7 +26,7 @@ class CoolDownWidget extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 3.0, sigmaY: 3.0),
         child: Container(
-          color: Colors.white,
+         // color: Colors.white,
           child: Stack(alignment: Alignment.center, children: [
             Padding(
               padding: const EdgeInsets.all(8.0),
