@@ -8,6 +8,7 @@ import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
 import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 import 'package:stpt_arrivals/ui/application_state_widget.dart';
+import 'package:stpt_arrivals/ui/wait_widget.dart';
 
 class ArrivalDisplayScreen extends StatefulWidget {
   final Transporter transporter;
@@ -197,11 +198,9 @@ class _ArrivalListView extends StatelessWidget {
               }),
           StreamBuilder(
             stream: bloc.loadingStream,
-            builder: (context, snapshot) => Opacity(
-                  opacity:
-                      snapshot.hasData ? (snapshot.data as bool) ? 1 : 0 : 0,
-                  child: Align(child: CircularProgressIndicator()),
-                ),
+            builder: (context, snapshot) => WaitWidget(
+              showingIf: !snapshot.hasData || snapshot.data,
+            ),
           )
         ],
       ),

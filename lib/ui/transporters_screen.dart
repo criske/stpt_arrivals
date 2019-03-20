@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/transporters/transporters_bloc.dart';
 import 'package:stpt_arrivals/ui/application_state_widget.dart';
+import 'package:stpt_arrivals/ui/wait_widget.dart';
 
 class TransportersScreen extends StatefulWidget {
   @override
@@ -14,15 +15,16 @@ class _TransportersScreenState extends State<TransportersScreen> {
 
   var _selectedDropFilter = PrettyTransporterBlocFilter();
 
+  final topPageController = PageController();
+
   @override
   void initState() {
     super.initState();
     _bloc = TransportersBlocImpl(
         ApplicationStateWidget.of(context).bloc.transportersRepository);
-    WidgetsBinding.instance.addPostFrameCallback((_){
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       ApplicationStateWidget.of(context).bloc.switchLastCoolDown();
     });
-
   }
 
   @override
@@ -37,41 +39,9 @@ class _TransportersScreenState extends State<TransportersScreen> {
             margin: EdgeInsets.only(bottom: 8),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: <Widget>[
-                  Padding(
-                      padding: EdgeInsets.all(4),
-                      child: Icon(Icons.filter_list)),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: StreamBuilder<bool>(
-                          stream: _bloc.loadingStream,
-                          builder: (context, snapshot) {
-                            final enabled =
-                                snapshot.hasData ? !snapshot.data : false;
-                            return DropdownButton<PrettyTransporterBlocFilter>(
-                                isExpanded: true,
-                                onChanged: enabled
-                                    ? (PrettyTransporterBlocFilter value) {
-                                        setState(() {
-                                          _selectedDropFilter = value;
-                                        });
-                                        _bloc.showBy(value.filter);
-                                      }
-                                    : null,
-                                items: prettyTransporterBlocFilterValues()
-                                    .map((f) => DropdownMenuItem(
-                                          value: f,
-                                          child: Text(f.toString()),
-                                        ))
-                                    .toList(),
-                                value: _selectedDropFilter);
-                          }),
-                    ),
-                  ),
-                ],
-              ),
+              child: PageView(
+                  controller: topPageController,
+                  children: [_filterWidget(), _searchTransporterWidget()]),
             ),
           ),
         ),
@@ -107,7 +77,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
                         ),
                       );
                     } else {
-                      return Center(child: CircularProgressIndicator());
+                      return Center(child: WaitWidget());
                     }
                   }),
               Center(
@@ -116,7 +86,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
                   builder: (_, snapshot) {
                     return Opacity(
                       opacity: snapshot.hasData ? snapshot.data ? 1 : 0 : 1,
-                      child: CircularProgressIndicator(),
+                      child: WaitWidget(),
                     );
                   },
                 ),
@@ -124,6 +94,73 @@ class _TransportersScreenState extends State<TransportersScreen> {
             ]),
           ),
         ),
+      ],
+    );
+  }
+
+  Row _filterWidget() {
+    return Row(
+      children: <Widget>[
+        Padding(
+            padding: EdgeInsets.all(4),
+            child: IconButton(
+              icon: Icon(Icons.search),
+              onPressed: () {
+                topPageController.animateToPage(1, duration: Duration(milliseconds: 200), curve: Curves.linear);
+              },
+            )),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: StreamBuilder<bool>(
+                stream: _bloc.loadingStream,
+                builder: (context, snapshot) {
+                  final enabled = snapshot.hasData ? !snapshot.data : false;
+                  return DropdownButton<PrettyTransporterBlocFilter>(
+                      isExpanded: true,
+                      onChanged: enabled
+                          ? (PrettyTransporterBlocFilter value) {
+                              setState(() {
+                                _selectedDropFilter = value;
+                              });
+                              _bloc.showBy(value.filter);
+                            }
+                          : null,
+                      items: prettyTransporterBlocFilterValues()
+                          .map((f) => DropdownMenuItem(
+                                value: f,
+                                child: Text(f.toString()),
+                              ))
+                          .toList(),
+                      value: _selectedDropFilter);
+                }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Row _searchTransporterWidget() {
+    return Row(
+      children: <Widget>[
+        IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: (){
+            topPageController.animateToPage(0, duration: Duration(milliseconds: 200), curve: Curves.linear);
+          },
+        ),
+        SizedBox(
+          width: 32,
+        ),
+        Expanded(
+          child: TextField(
+            decoration:
+                InputDecoration(border: InputBorder.none, hintText: 'Cauta...'),
+            onChanged: (text) {
+              //todo search bloc
+            },
+          ),
+        )
       ],
     );
   }

@@ -14,6 +14,7 @@ class MyApp extends StatelessWidget {
         ),
         debugShowCheckedModeBanner: false,
         home: ApplicationStateWidget());
+       // home: Container(color: Colors.green,));
 //        home: Center(
 //            child: Container(
 //                width: 100, height: 100, child: AnimCoolDownWidget())));

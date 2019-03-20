@@ -116,20 +116,20 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
       ));
 
   Widget _buildCoolDownWidget() {
-    return StreamBuilder<CoolDownUI>(
-        stream: widget.bloc.remainingCoolDownStream(),
-        builder: (context, snapshot) {
-          return snapshot.hasData
-              ? Container(
-                  width: 80,
-                  height: 80,
-                  child: CoolDownWidget(
-                    label: snapshot.data.transporterName,
-                    remaining: snapshot.data.percent,
-                    remainingText: snapshot.data.remainingSeconds.toString(),
-                  ))
-              : Container();
-        });
+    return Container(
+        width: 80,
+        height: 80,
+        child: StreamBuilder<CoolDownUI>(
+            stream: widget.bloc.remainingCoolDownStream(),
+            builder: (context, snapshot) {
+              return snapshot.hasData
+                  ? CoolDownWidget(
+                      label: snapshot.data.transporterName,
+                      remaining: snapshot.data.percent,
+                      remainingText: snapshot.data.remainingSeconds.toString(),
+                    )
+                  : Container();
+            }));
   }
 
   @override
