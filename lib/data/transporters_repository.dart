@@ -13,6 +13,8 @@ abstract class TransportersRepository {
 
   Future<List<Transporter>> findAllByFavorites();
 
+  Future<List<Transporter>> findAllContaining(String input);
+
   Future<Transporter> findById(String transporterId);
 
   Future<void> save(List<Transporter> transporters);
@@ -51,7 +53,8 @@ class TransportersRepositoryImpl implements TransportersRepository {
         final trolleys = await _transportersTypeFetcher
             .fetchTransporters(TransporterType.trolley);
 
-        final remoteTransporters = [buses, trams, trolleys].expand((t) => t).toList();
+        final remoteTransporters =
+            [buses, trams, trolleys].expand((t) => t).toList();
 
         await _transportersDataSource.save(remoteTransporters);
         _transporters = remoteTransporters;
@@ -72,12 +75,21 @@ class TransportersRepositoryImpl implements TransportersRepository {
   }
 
   @override
+  Future<List<Transporter>> findAllContaining(String input) async => input
+          .isEmpty
+      ? await findAll()
+      : (await findAll())
+          .where(
+              (t) => t.name.toLowerCase().contains(input.toLowerCase().trim()))
+          .toList();
+
+  @override
   Future<List<Transporter>> findAllByFavorites() async =>
-      _transporters.where((t) => t.isFavorite).toList();
+      (await findAll()).where((t) => t.isFavorite).toList();
 
   @override
   Future<List<Transporter>> findAllByType(TransporterType type) async =>
-      _transporters.where((t) => t.type == type).toList();
+      (await findAll()).where((t) => t.type == type).toList();
 
   @override
   Future<void> save(List<Transporter> transporters) async {

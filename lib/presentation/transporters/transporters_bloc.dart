@@ -9,13 +9,14 @@ abstract class TransportersBloc implements DisposableBloc {
   final Stream<List<Transporter>> transportersStream = Stream.empty();
 
   final Stream<PrettyTransporterBlocFilter> selectedFilterStream =
-  Stream.empty();
+      Stream.empty();
 
   final Stream<bool> loadingStream = Stream.empty();
 
   final Stream<ErrorUI> errorStream = Stream.empty();
 
-  void showBy(TransporterBlocFilter type);
+  // ignore: avoid_init_to_null
+  void showBy(TransporterBlocFilter type, [dynamic extras = null]);
 
   void update(Transporter transporter);
 }
@@ -27,6 +28,7 @@ enum TransporterBlocFilter {
   TRAM,
   TROLLEY,
   BOAT,
+  SEARCH,
 }
 
 class PrettyTransporterBlocFilter {
@@ -69,6 +71,9 @@ String _prettyTransporterBlocFilter(TransporterBlocFilter filter) {
     case TransporterBlocFilter.FAVORITE:
       pretty = "Favorite";
       break;
+    case TransporterBlocFilter.SEARCH:
+      pretty = "Cauta...";
+      break;
   }
   return pretty;
 }
@@ -76,10 +81,6 @@ String _prettyTransporterBlocFilter(TransporterBlocFilter filter) {
 class TransportersBlocImpl implements TransportersBloc {
   final BehaviorSubject<_Action> _actionsSubject = BehaviorSubject()
     ..add(_ActionAll());
-
-  final BehaviorSubject<PrettyTransporterBlocFilter> _selectedFilterSubject =
-  BehaviorSubject()
-    ..add(PrettyTransporterBlocFilter(TransporterBlocFilter.ALL));
 
   TransportersRepository _repository;
 
@@ -89,18 +90,17 @@ class TransportersBlocImpl implements TransportersBloc {
     this._repository = repository;
     _stateObservable = _actionsSubject
         .switchMap((action) {
-      if (action is _ActionUpdate) {
-        return Observable.fromFuture(_repository.update(action.transporter))
-            .concatMap((_) =>
-            _findTransportersByAction(action.lastAction)
+          if (action is _ActionUpdate) {
+            return Observable.fromFuture(_repository.update(action.transporter))
+                .concatMap((_) => _findTransportersByAction(action.lastAction)
+                    .startWith(_ResultLoading.inst)
+                    .onErrorReturnWith((e) => _ResultError(e)));
+          } else {
+            return _findTransportersByAction(action)
                 .startWith(_ResultLoading.inst)
-                .onErrorReturnWith((e) => _ResultError(e)));
-      } else {
-        return _findTransportersByAction(action)
-            .startWith(_ResultLoading.inst)
-            .onErrorReturnWith((e) => _ResultError(e));
-      }
-    })
+                .onErrorReturnWith((e) => _ResultError(e));
+          }
+        })
         .scan(_stateReducer, _State.init)
         .share();
   }
@@ -109,7 +109,7 @@ class TransportersBlocImpl implements TransportersBloc {
     if (curr is _ResultError) {
       return acc.nextError(_errMapper(curr.err));
     } else if (curr is _ResultSuccess) {
-      return _State(curr.transporters, false, null);
+      return _State(curr.transporters, curr.filter, false, null);
     } else if (curr is _ResultLoading) {
       return acc.nextLoading(true);
     }
@@ -135,18 +135,21 @@ class TransportersBlocImpl implements TransportersBloc {
 
   @override
   Stream<bool> get loadingStream =>
-      _stateObservable.map((s) => s.loading).distinct();
+      _stateObservable.map((s) => s.loading).distinct().startWith(false);
 
   Observable<_Result> _findTransportersByAction(_Action action) {
     if (action is _ActionAll) {
       return Observable.fromFuture(_repository.findAll())
-          .map((l) => _ResultSuccess(l));
+          .map((l) => _ResultSuccess(l, TransporterBlocFilter.ALL));
     } else if (action is _ActionType) {
       return Observable.fromFuture(_repository.findAllByType(action.type))
-          .map((l) => _ResultSuccess(l));
+          .map((l) => _ResultSuccess(l, _typeToFilter(action.type)));
     } else if (action is _ActionFavorites) {
       return Observable.fromFuture(_repository.findAllByFavorites())
-          .map((l) => _ResultSuccess(l));
+          .map((l) => _ResultSuccess(l, TransporterBlocFilter.FAVORITE));
+    } else if (action is _ActionSearch) {
+      return Observable.fromFuture(_repository.findAllContaining(action.input))
+          .map((l) => _ResultSuccess(l, TransporterBlocFilter.SEARCH));
     }
     if (action is _ActionUpdate) {
       return Observable.error(Exception("Update Action not allowed here"));
@@ -158,7 +161,6 @@ class TransportersBlocImpl implements TransportersBloc {
   @override
   void dispose() {
     _actionsSubject.close();
-    _selectedFilterSubject.close();
   }
 
   @override
@@ -171,7 +173,8 @@ class TransportersBlocImpl implements TransportersBloc {
   }
 
   @override
-  void showBy(TransporterBlocFilter type) {
+  // ignore: avoid_init_to_null
+  void showBy(TransporterBlocFilter type, [dynamic extras = null]) {
     switch (type) {
       case TransporterBlocFilter.ALL:
         _actionsSubject.add(_ActionAll());
@@ -191,16 +194,42 @@ class TransportersBlocImpl implements TransportersBloc {
       case TransporterBlocFilter.FAVORITE:
         _actionsSubject.add(_ActionFavorites());
         break;
+      case TransporterBlocFilter.SEARCH:
+        _actionsSubject.add(_ActionSearch((extras as String).trim() ?? ""));
+        break;
     }
-    _selectedFilterSubject.add(PrettyTransporterBlocFilter(type));
   }
 
   @override
   Stream<PrettyTransporterBlocFilter> get selectedFilterStream =>
-      _selectedFilterSubject.stream;
+      _stateObservable
+          .map((s) => s.filter)
+          //.distinct()
+          .map((f) => PrettyTransporterBlocFilter(f));
+
+  //.startWith(PrettyTransporterBlocFilter(TransporterBlocFilter.ALL));
 
   @override
   Stream<ErrorUI> get errorStream => _stateObservable.map((s) => s.error);
+}
+
+TransporterBlocFilter _typeToFilter(TransporterType type) {
+  var filter;
+  switch (type) {
+    case TransporterType.bus:
+      filter = TransporterBlocFilter.BUS;
+      break;
+    case TransporterType.tram:
+      filter = TransporterBlocFilter.TRAM;
+      break;
+    case TransporterType.trolley:
+      filter = TransporterBlocFilter.TROLLEY;
+      break;
+    case TransporterType.boat:
+      filter = TransporterBlocFilter.BOAT;
+      break;
+  }
+  return filter;
 }
 
 abstract class _Action {}
@@ -222,18 +251,26 @@ class _ActionUpdate implements _Action {
   _ActionUpdate(this.transporter, this.lastAction);
 }
 
+class _ActionSearch implements _Action {
+  final String input;
+
+  _ActionSearch(this.input);
+}
+
 class _State {
-  static final _State init = _State([], false, null);
+  static final _State init = _State([], TransporterBlocFilter.ALL, false, null);
 
   final List<Transporter> transporters;
+  final TransporterBlocFilter filter;
   final bool loading;
   final ErrorUI error;
 
-  _State(this.transporters, this.loading, this.error);
+  _State(this.transporters, this.filter, this.loading, this.error);
 
-  _State nextLoading(bool loading) => _State(transporters, loading, null);
+  _State nextLoading(bool loading) =>
+      _State(transporters, filter, loading, null);
 
-  _State nextError(ErrorUI error) => _State(transporters, false, error);
+  _State nextError(ErrorUI error) => _State(transporters, filter, false, error);
 }
 
 abstract class _Result {}
@@ -250,6 +287,7 @@ class _ResultError implements _Result {
 
 class _ResultSuccess implements _Result {
   final List<Transporter> transporters;
+  final TransporterBlocFilter filter;
 
-  _ResultSuccess(this.transporters);
+  _ResultSuccess(this.transporters, this.filter);
 }

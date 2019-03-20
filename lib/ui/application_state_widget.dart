@@ -15,6 +15,7 @@ import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
 import 'package:stpt_arrivals/ui/arrival_display_screen.dart';
 import 'package:stpt_arrivals/ui/cool_down_widget.dart';
 import 'package:stpt_arrivals/ui/transporters_screen.dart';
+import 'package:stpt_arrivals/ui/utils.dart';
 
 class ApplicationStateWidget extends StatefulWidget {
   static final RemoteConfig config = RemoteConfigImpl();
@@ -71,31 +72,32 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
         return navigatorState.canPop() ? !navigatorState.pop() : true;
       },
       child: Scaffold(
-        body: SafeArea(
-          child: Stack(
+        body: Stack(
             children: [
-              Navigator(
-                key: navigatorKey,
-                initialRoute: "/",
-                onGenerateRoute: (settings) {
-                  WidgetBuilder builder;
-                  switch (settings.name) {
-                    case "/":
-                      builder = (BuildContext _) => TransportersScreen();
-                      break;
-                    case "/arrivals":
-                      {
-                        final transporter = settings.arguments as Transporter;
-                        builder = (BuildContext _) =>
-                            ArrivalDisplayScreen(transporter);
+              SafeArea(
+                child: Navigator(
+                  key: navigatorKey,
+                  initialRoute: "/",
+                  onGenerateRoute: (settings) {
+                    WidgetBuilder builder;
+                    switch (settings.name) {
+                      case "/":
+                        builder = (BuildContext _) => TransportersScreen();
                         break;
-                      }
-                    default:
-                      throw Exception('Invalid route: ${settings.name}');
-                  }
-                  return MaterialPageRoute(
-                      builder: builder, settings: settings);
-                },
+                      case "/arrivals":
+                        {
+                          final transporter = settings.arguments as Transporter;
+                          builder = (BuildContext _) =>
+                              ArrivalDisplayScreen(transporter);
+                          break;
+                        }
+                      default:
+                        throw Exception('Invalid route: ${settings.name}');
+                    }
+                    return MaterialPageRoute(
+                        builder: builder, settings: settings);
+                  },
+                ),
               ),
               Positioned(
                 left: coolDownDragPosition.dx,
@@ -112,11 +114,10 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
               ),
             ],
           ),
-        ),
       ));
 
   Widget _buildCoolDownWidget() {
-    return Container(
+    return isInDebugMode? Container() : Container(
         width: 80,
         height: 80,
         child: StreamBuilder<CoolDownUI>(

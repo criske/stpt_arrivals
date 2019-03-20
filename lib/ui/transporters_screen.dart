@@ -13,9 +13,15 @@ class TransportersScreen extends StatefulWidget {
 class _TransportersScreenState extends State<TransportersScreen> {
   TransportersBloc _bloc;
 
+  static final int _pageFilter = 0;
+  static final int _pageSearch = 1;
+
   var _selectedDropFilter = PrettyTransporterBlocFilter();
 
   final topPageController = PageController();
+
+  final _searchTextFocusNode = FocusNode();
+  final _searchTextFocusNodeReleased = FocusNode();
 
   @override
   void initState() {
@@ -40,6 +46,15 @@ class _TransportersScreenState extends State<TransportersScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: PageView(
+                  onPageChanged: ((p) {
+                    if (p == _pageSearch) {
+                      _selectedDropFilter = PrettyTransporterBlocFilter(
+                          TransporterBlocFilter.SEARCH);
+                      FocusScope.of(context).requestFocus(_searchTextFocusNode);
+                    }else{
+                      FocusScope.of(context).requestFocus(_searchTextFocusNodeReleased);
+                    }
+                  }),
                   controller: topPageController,
                   children: [_filterWidget(), _searchTransporterWidget()]),
             ),
@@ -47,7 +62,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
         ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+            padding: const EdgeInsets.only(top: 16, right: 8, left: 8),
             child: Stack(children: [
               StreamBuilder<List<Transporter>>(
                   stream: _bloc.transportersStream,
@@ -106,7 +121,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
             child: IconButton(
               icon: Icon(Icons.search),
               onPressed: () {
-                topPageController.animateToPage(1, duration: Duration(milliseconds: 200), curve: Curves.linear);
+                _jumpToTopPage(_pageSearch);
               },
             )),
         Expanded(
@@ -123,9 +138,15 @@ class _TransportersScreenState extends State<TransportersScreen> {
                               setState(() {
                                 _selectedDropFilter = value;
                               });
-                              _bloc.showBy(value.filter);
+                              if (value.filter ==
+                                  TransporterBlocFilter.SEARCH) {
+                                _jumpToTopPage(_pageSearch);
+                              } else {
+                                _bloc.showBy(value.filter);
+                              }
                             }
                           : null,
+                      //todo need to use a stream here but is bugged?
                       items: prettyTransporterBlocFilterValues()
                           .map((f) => DropdownMenuItem(
                                 value: f,
@@ -140,13 +161,19 @@ class _TransportersScreenState extends State<TransportersScreen> {
     );
   }
 
+  void _jumpToTopPage(int page) {
+    topPageController.animateToPage(page,
+        duration: Duration(milliseconds: 300), curve: Curves.linear);
+  }
+
   Row _searchTransporterWidget() {
     return Row(
       children: <Widget>[
         IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: (){
-            topPageController.animateToPage(0, duration: Duration(milliseconds: 200), curve: Curves.linear);
+          onPressed: () {
+            FocusScope.of(context).requestFocus(_searchTextFocusNodeReleased);
+            _jumpToTopPage(_pageFilter);
           },
         ),
         SizedBox(
@@ -154,10 +181,11 @@ class _TransportersScreenState extends State<TransportersScreen> {
         ),
         Expanded(
           child: TextField(
+            focusNode: _searchTextFocusNode,
             decoration:
                 InputDecoration(border: InputBorder.none, hintText: 'Cauta...'),
             onChanged: (text) {
-              //todo search bloc
+              _bloc.showBy(TransporterBlocFilter.SEARCH, text);
             },
           ),
         )
@@ -191,6 +219,8 @@ class _TransportersScreenState extends State<TransportersScreen> {
   void dispose() {
     super.dispose();
     _bloc.dispose();
+    _searchTextFocusNode.dispose();
+    _searchTextFocusNodeReleased.dispose();
   }
 }
 

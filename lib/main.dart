@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:stpt_arrivals/ui/application_state_widget.dart';
 import 'package:stpt_arrivals/ui/cool_down_widget.dart';
 
-void main() => runApp(new MyApp());
+void main() {
+  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.white, // navigation bar color
+      statusBarColor: Colors.grey[300],
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.light));
+  runApp(new MyApp());
+}
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -11,10 +19,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
         theme: new ThemeData(
           primarySwatch: Colors.amber,
+          brightness: Brightness.light
         ),
         debugShowCheckedModeBanner: false,
         home: ApplicationStateWidget());
-       // home: Container(color: Colors.green,));
+    // home: Container(color: Colors.green,));
 //        home: Center(
 //            child: Container(
 //                width: 100, height: 100, child: AnimCoolDownWidget())));
