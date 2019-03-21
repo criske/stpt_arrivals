@@ -5,7 +5,7 @@ import 'package:stpt_arrivals/ui/cool_down_widget.dart';
 
 void main() {
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-      systemNavigationBarColor: Colors.white, // navigation bar color
+      systemNavigationBarColor: Colors.grey[300], // navigation bar color
       statusBarColor: Colors.grey[300],
       statusBarIconBrightness: Brightness.light,
       statusBarBrightness: Brightness.light));
@@ -23,10 +23,6 @@ class MyApp extends StatelessWidget {
         ),
         debugShowCheckedModeBanner: false,
         home: ApplicationStateWidget());
-    // home: Container(color: Colors.green,));
-//        home: Center(
-//            child: Container(
-//                width: 100, height: 100, child: AnimCoolDownWidget())));
   }
 }
 

@@ -82,25 +82,19 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                 StreamBuilder(
                   stream: _bloc.wayNameStream,
                   builder: (context, snapshot) => Expanded(
-                      child: Center(
-                          child: AutoSizeText(snapshot.hasData
-                              ? snapshot.data
-                              : "??\u{2192}??",
-                            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-                            maxFontSize: 20,
-                            minFontSize: 10,
-                            maxLines: 1,
-                          ))),
+                          child: Center(
+                              child: AutoSizeText(
+                        snapshot.hasData ? snapshot.data : "??\u{2192}??",
+                        style: TextStyle(
+                            color: Colors.black87, fontWeight: FontWeight.bold),
+                        maxFontSize: 20,
+                        minFontSize: 10,
+                        maxLines: 1,
+                      ))),
                 ),
                 IconButton(
                   icon: Icon(Icons.timeline),
                   onPressed: () => _bloc.toggleWay(),
-                ),
-                IconButton(
-                  icon: Icon(Icons.refresh),
-                  onPressed: () async => ApplicationStateWidget.of(context)
-                      .tryAction(
-                          context, "", () => _bloc.load(widget.transporter.id)),
                 ),
               ],
             ),
@@ -108,6 +102,7 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
         ),
         _ArrivalListView(
           bloc: _bloc,
+          transporterId: widget.transporter.id,
         ),
       ],
     );
@@ -145,8 +140,10 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
 
 class _ArrivalListView extends StatelessWidget {
   final ArrivalDisplayBloc bloc;
+  final String transporterId;
 
-  _ArrivalListView({Key key, @required this.bloc}) : super(key: key);
+  _ArrivalListView({Key key, @required this.bloc, @required this.transporterId})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -159,38 +156,46 @@ class _ArrivalListView extends StatelessWidget {
                 if (snapshot.hasData) {
                   final arrivals = snapshot.data as List<ArrivalUI>;
                   return Padding(
-                    padding: const EdgeInsets.only(top:8),
-                    child: ListView.separated(
-                      separatorBuilder: (context, index) => Divider(
-                        color: Colors.black26,
-                      ),
-                        itemCount: arrivals.length,
-                        itemBuilder: (context, position) {
-                          final arrival = arrivals.elementAt(position);
-                          return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: <Widget>[
-                                  Text("${arrival.stationName}",
-                                      style: TextStyle(fontSize: 14.0)),
-                                  DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      color: Color(arrival.time1.backgroundColor),
-                                      borderRadius: BorderRadius.all(Radius.circular(5))
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(4.0),
-                                      child: Text("${arrival.time1.value}",
+                    padding: const EdgeInsets.only(top: 8),
+                    child: RefreshIndicator(
+                      child: ListView.separated(
+                          separatorBuilder: (context, index) => Divider(
+                                color: Colors.black26,
+                              ),
+                          itemCount: arrivals.length,
+                          itemBuilder: (context, position) {
+                            final arrival = arrivals.elementAt(position);
+                            return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 4, horizontal: 16),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: <Widget>[
+                                    Text("${arrival.stationName}",
+                                        style: TextStyle(fontSize: 14.0)),
+                                    DecoratedBox(
+                                      decoration: BoxDecoration(
+                                          color: Color(
+                                              arrival.time1.backgroundColor),
+                                          borderRadius: BorderRadius.all(
+                                              Radius.circular(5))),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(4.0),
+                                        child: Text(
+                                          "${arrival.time1.value}",
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
                                               color: Color(arrival.time1.color),
                                               fontSize: 14.0),
+                                        ),
                                       ),
-                                    ),
-                                  )],
-                              ));
-                        }),
+                                    )
+                                  ],
+                                ));
+                          }),
+                      onRefresh: () => _refresh(context),
+                    ),
                   );
                 } else {
                   return Container();
@@ -199,11 +204,16 @@ class _ArrivalListView extends StatelessWidget {
           StreamBuilder(
             stream: bloc.loadingStream,
             builder: (context, snapshot) => WaitWidget(
-              showingIf: !snapshot.hasData || snapshot.data,
-            ),
+                  showingIf: !snapshot.hasData || snapshot.data,
+                ),
           )
         ],
       ),
     );
+  }
+
+  Future<void> _refresh(BuildContext context) async {
+    ApplicationStateWidget.of(context)
+        .tryAction(context, "", () => bloc.load(transporterId));
   }
 }
