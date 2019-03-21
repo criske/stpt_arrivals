@@ -14,6 +14,7 @@ import 'package:stpt_arrivals/services/restoring_cooldown_manager.dart';
 import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
 import 'package:stpt_arrivals/ui/arrival_display_screen.dart';
 import 'package:stpt_arrivals/ui/cool_down_widget.dart';
+import 'package:stpt_arrivals/ui/draggable_widget.dart';
 import 'package:stpt_arrivals/ui/transporters_screen.dart';
 import 'package:stpt_arrivals/ui/utils.dart';
 
@@ -63,74 +64,62 @@ class ApplicationStateWidget extends StatefulWidget {
 class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
 
-  var coolDownDragPosition = Offset(0, 0);
-
   @override
-  Widget build(BuildContext context) => WillPopScope(
-      onWillPop: () async {
+  Widget build(BuildContext context) => WillPopScope(onWillPop: () async {
         final navigatorState = navigatorKey.currentState;
+
         return navigatorState.canPop() ? !navigatorState.pop() : true;
-      },
-      child: Scaffold(
-        body: Stack(
-            children: [
-              SafeArea(
-                child: Navigator(
-                  key: navigatorKey,
-                  initialRoute: "/",
-                  onGenerateRoute: (settings) {
-                    WidgetBuilder builder;
-                    switch (settings.name) {
-                      case "/":
-                        builder = (BuildContext _) => TransportersScreen();
-                        break;
-                      case "/arrivals":
-                        {
-                          final transporter = settings.arguments as Transporter;
-                          builder = (BuildContext _) =>
-                              ArrivalDisplayScreen(transporter);
-                          break;
-                        }
-                      default:
-                        throw Exception('Invalid route: ${settings.name}');
+      }, child: Scaffold(body: LayoutBuilder(builder: (ctx, c) {
+        final screenSize = MediaQuery.of(ctx).size;
+        final rect = (Offset.zero & screenSize);
+        final start = Offset(150, 300);
+        return Stack(children: [
+          SafeArea(
+            child: Navigator(
+              key: navigatorKey,
+              initialRoute: "/",
+              onGenerateRoute: (settings) {
+                WidgetBuilder builder;
+                switch (settings.name) {
+                  case "/":
+                    builder = (BuildContext _) => TransportersScreen();
+                    break;
+                  case "/arrivals":
+                    {
+                      final transporter = settings.arguments as Transporter;
+                      builder =
+                          (BuildContext _) => ArrivalDisplayScreen(transporter);
+                      break;
                     }
-                    return MaterialPageRoute(
-                        builder: builder, settings: settings);
-                  },
-                ),
-              ),
-              Positioned(
-                left: coolDownDragPosition.dx,
-                top: coolDownDragPosition.dy,
-                child: Draggable(
-                    feedback: _buildCoolDownWidget(),
-                    child: _buildCoolDownWidget(),
-                    childWhenDragging: Container(),
-                    onDraggableCanceled: (_, offset) {
-                      setState(() {
-                        coolDownDragPosition = offset;
-                      });
-                    }),
-              ),
-            ],
+                  default:
+                    throw Exception('Invalid route: ${settings.name}');
+                }
+                return MaterialPageRoute(builder: builder, settings: settings);
+              },
+            ),
           ),
-      ));
+          DraggableWidget.simple(_buildCoolDownWidget(), start, rect)
+        ]);
+      })));
 
   Widget _buildCoolDownWidget() {
-    return isInDebugMode? Container() : Container(
-        width: 80,
-        height: 80,
-        child: StreamBuilder<CoolDownUI>(
-            stream: widget.bloc.remainingCoolDownStream(),
-            builder: (context, snapshot) {
-              return snapshot.hasData
-                  ? CoolDownWidget(
-                      label: snapshot.data.transporterName,
-                      remaining: snapshot.data.percent,
-                      remainingText: snapshot.data.remainingSeconds.toString(),
-                    )
-                  : Container();
-            }));
+    return isInDebugMode
+        ? Container()
+        : Container(
+            width: 80,
+            height: 80,
+            child: StreamBuilder<CoolDownUI>(
+                stream: widget.bloc.remainingCoolDownStream(),
+                builder: (context, snapshot) {
+                  return snapshot.hasData
+                      ? CoolDownWidget(
+                          label: snapshot.data.transporterName,
+                          remaining: snapshot.data.percent,
+                          remainingText:
+                              snapshot.data.remainingSeconds.toString(),
+                        )
+                      : Container();
+                }));
   }
 
   @override

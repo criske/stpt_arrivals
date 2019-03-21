@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stpt_arrivals/ui/application_state_widget.dart';
-import 'package:stpt_arrivals/ui/cool_down_widget.dart';
+import 'package:stpt_arrivals/ui/draggable_widget.dart';
 
 void main() {
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
@@ -18,47 +18,75 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
         theme: new ThemeData(
-          primarySwatch: Colors.amber,
-          brightness: Brightness.light
-        ),
+            primarySwatch: Colors.amber, brightness: Brightness.light),
         debugShowCheckedModeBanner: false,
         home: ApplicationStateWidget());
+        //home: TestDraggableWidget());
   }
 }
 
-class AnimCoolDownWidget extends StatefulWidget {
-  @override
-  _AnimCoolDownWidgetState createState() => _AnimCoolDownWidgetState();
-}
-
-class _AnimCoolDownWidgetState extends State<AnimCoolDownWidget>
-    with SingleTickerProviderStateMixin {
-  AnimationController controller;
-
-  Animation<double> animation;
-
-  @override
-  void initState() {
-    controller =
-        AnimationController(duration: Duration(seconds: 30), vsync: this);
-    animation = Tween(begin: 1.0, end: 0.0).animate(controller);
-    controller.forward();
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    controller.dispose();
-  }
-
+class TestDraggableWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-        builder: (_, __) => CoolDownWidget(
-              remaining: animation.value,
-              label: "E1",
-            ),
-        animation: controller);
+    return Center(
+      child: Container(
+          width: 300,
+          height: 500,
+          color: Colors.white,
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+             final rect = (Offset.zero & Size(constraints.maxWidth,
+                      constraints.maxHeight));
+
+             final start = Alignment.center.withinRect(rect);
+             return Stack(
+                children: [
+                  DraggableWidget.simple(Container(
+                    width: 50,
+                    height: 50,
+                    color: Colors.grey,
+                  ), start, rect)
+                ],
+              );
+            },
+          )),
+    );
   }
 }
+
+//class AnimCoolDownWidget extends StatefulWidget {
+//  @override
+//  _AnimCoolDownWidgetState createState() => _AnimCoolDownWidgetState();
+//}
+//
+//class _AnimCoolDownWidgetState extends State<AnimCoolDownWidget>
+//    with SingleTickerProviderStateMixin {
+//  AnimationController controller;
+//
+//  Animation<double> animation;
+//
+//  @override
+//  void initState() {
+//    controller =
+//        AnimationController(duration: Duration(seconds: 30), vsync: this);
+//    animation = Tween(begin: 1.0, end: 0.0).animate(controller);
+//    controller.forward();
+//    super.initState();
+//  }
+//
+//  @override
+//  void dispose() {
+//    super.dispose();
+//    controller.dispose();
+//  }
+//
+//  @override
+//  Widget build(BuildContext context) {
+//    return AnimatedBuilder(
+//        builder: (_, __) => CoolDownWidget(
+//              remaining: animation.value,
+//              label: "E1",
+//            ),
+//        animation: controller);
+//  }
+//}
