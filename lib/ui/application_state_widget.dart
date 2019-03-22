@@ -30,7 +30,7 @@ class ApplicationStateWidget extends StatefulWidget {
           TransportersTypeFetcherImpl(config, client, TransporterParserImpl()));
 
   final bloc = ApplicationStateBloc(
-    RestoringCoolDownManagerImpl(CoolDownDataSourceImpl()),
+    RestoringCoolDownManagerImpl(CoolDownDataSourceImpl(), SystemTimeProvider()),
     SystemTimeProvider(),
     transporterRepository,
   );
@@ -40,7 +40,7 @@ class ApplicationStateWidget extends StatefulWidget {
   @override
   _ApplicationStateWidgetState createState() => _ApplicationStateWidgetState();
 
-  tryAction(
+  tryActionForTransporter(
       BuildContext context, String transporterId, VoidCallback action) async {
     bloc.switchLastCoolDown(transporterId);
     if (await bloc.isInCoolDown(transporterId)) {

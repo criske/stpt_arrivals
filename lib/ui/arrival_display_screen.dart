@@ -36,12 +36,12 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
     final config = ApplicationStateWidget.config;
     final client = ApplicationStateWidget.client;
 
-    _bloc = ArrivalDisplayBlocImpl(
-        timeProvider,
-        TimeUIConverterImpl(),
+    final cachedFetcher = CachedRouteArrivalFetcher(
         RouteArrivalFetcher(
             RouteArrivalParserImpl(timeConverter), config, client),
         restoringCoolDownManager);
+
+    _bloc = ArrivalDisplayBlocImpl(TimeUIConverterImpl(), cachedFetcher);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _bloc.load(widget.transporter.id);
@@ -214,6 +214,6 @@ class _ArrivalListView extends StatelessWidget {
 
   Future<void> _refresh(BuildContext context) async {
     ApplicationStateWidget.of(context)
-        .tryAction(context, "", () => bloc.load(transporterId));
+        .tryActionForTransporter(context, transporterId, () => bloc.load(transporterId));
   }
 }

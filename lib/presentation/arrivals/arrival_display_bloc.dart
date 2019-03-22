@@ -4,13 +4,11 @@ import 'dart:ui';
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:stpt_arrivals/data/cool_down_data_source.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
 import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/presentation/arrivals/arrival_ui.dart';
 import 'package:stpt_arrivals/presentation/arrivals/time_ui_converter.dart';
 import 'package:stpt_arrivals/presentation/disposable_bloc.dart';
-import 'package:stpt_arrivals/services/parser/time_converter.dart';
 import 'package:stpt_arrivals/services/restoring_cooldown_manager.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 
@@ -33,20 +31,17 @@ abstract class ArrivalDisplayBloc implements DisposableBloc {
 }
 
 class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
-  TimeProvider _timeProvider;
-
   TimeUIConverter _timeUIConverter;
 
-  RouteArrivalFetcher _arrivalFetcher;
-
-  RestoringCoolDownManager _coolDownManager;
+  IRouteArrivalFetcher _arrivalFetcher;
 
   ArrivalState _initialState;
 
   Observable<ArrivalState> _stateObservable;
 
-  ArrivalDisplayBlocImpl(this._timeProvider, this._timeUIConverter,
-      this._arrivalFetcher, this._coolDownManager,
+  ArrivalDisplayBlocImpl(
+      this._timeUIConverter,
+      this._arrivalFetcher,
       [this._initialState]) {
     final loadStream = _actionLoadSubject.stream;
     var toggleStream = _actionToggleSubject.stream;
@@ -66,16 +61,14 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   PublishSubject<ErrorUI> _errorStream = PublishSubject<ErrorUI>();
 
   @override
-  void cancel() =>
-      _actionCancelSubject.add(_Action.cancel(_timeProvider.timeMillis()));
+  void cancel() => _actionCancelSubject.add(_Action.cancel());
 
   @override
-  void load(String transporterId) => _actionLoadSubject
-      .add(_Action.load(_timeProvider.timeMillis(), transporterId));
+  void load(String transporterId) =>
+      _actionLoadSubject.add(_Action.load(transporterId));
 
   @override
-  void toggleWay() =>
-      _actionToggleSubject.add(_Action.toggleWay(_timeProvider.timeMillis()));
+  void toggleWay() => _actionToggleSubject.add(_Action.toggleWay());
 
   @override
   void dispose() {
@@ -137,10 +130,6 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       return Observable.fromFuture(
               _arrivalFetcher.getRouteArrivals(action.transporterId))
           .map((route) => ArrivalState.partialRoute(route))
-          .doOnData((_) async {
-            _coolDownManager.saveLastCoolDown(
-                CoolDownData(action.transporterId, action.time));
-          })
           .doOnError((e, stack) {
             print(stack);
             _errorStream.add(_errorMapper(e));
@@ -178,39 +167,37 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
 
 @immutable
 abstract class _Action {
-  final int time;
+  const _Action();
 
-  const _Action(this.time);
+  factory _Action.load(transporterId) => _ActionLoad(transporterId);
 
-  factory _Action.load(transporterId, time) => _ActionLoad(transporterId, time);
+  factory _Action.cancel() => _ActionCancel();
 
-  factory _Action.cancel(time) => _ActionCancel(time);
+  factory _Action.toggleWay() => _ActionToggle();
 
-  factory _Action.toggleWay(time) => _ActionToggle(time);
-
-  static const idle = _ActionIdle(0);
+  static const idle = _ActionIdle();
 }
 
 @immutable
 class _ActionLoad extends _Action {
   final String transporterId;
 
-  const _ActionLoad(time, this.transporterId) : super(time);
+  const _ActionLoad(this.transporterId) : super();
 }
 
 @immutable
 class _ActionCancel extends _Action {
-  const _ActionCancel(time) : super(time);
+  const _ActionCancel() : super();
 }
 
 @immutable
 class _ActionToggle extends _Action {
-  const _ActionToggle(time) : super(time);
+  const _ActionToggle() : super();
 }
 
 @immutable
 class _ActionIdle extends _Action {
-  const _ActionIdle(time) : super(time);
+  const _ActionIdle() : super();
 }
 
 @immutable

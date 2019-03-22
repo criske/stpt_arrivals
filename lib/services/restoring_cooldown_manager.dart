@@ -2,15 +2,16 @@ import 'dart:async';
 
 import 'package:rxdart/rxdart.dart';
 import 'package:stpt_arrivals/data/cool_down_data_source.dart';
+import 'package:stpt_arrivals/services/parser/time_converter.dart';
 
 abstract class RestoringCoolDownManager {
   static const Duration coolDownThreshold = const Duration(seconds: 30);
 
-  Stream<CoolDownData> getLastCoolDown();
+  Stream<CoolDownData> streamLastCoolDown();
 
-  Future<bool> isInCoolDown(String transporterId, int nowMillis);
+  Future<bool> isInCoolDown(String transporterId);
 
-  Future<void> saveLastCoolDown(CoolDownData data);
+  Future<void> saveLastCoolDown(String transporterId);
 
   void switchLastCoolDown(String transporterId);
 
@@ -30,19 +31,19 @@ abstract class RestoringCoolDownManager {
 }
 
 class RestoringCoolDownManagerImpl extends RestoringCoolDownManager {
-  CoolDownDataSource coolDownDataSource;
+  CoolDownDataSource _coolDownDataSource;
+
+  TimeProvider _timeProvider;
 
   BehaviorSubject<String> _subjectCoolDownSwitch = BehaviorSubject()
     ..add("");
 
 
-  RestoringCoolDownManagerImpl(CoolDownDataSource coolDownDataSource) {
-    this.coolDownDataSource = coolDownDataSource;
-  }
+  RestoringCoolDownManagerImpl(this._coolDownDataSource, this._timeProvider);
 
   @override
-  Stream<CoolDownData> getLastCoolDown() =>
-      _subjectCoolDownSwitch.switchMap((id) => Observable(coolDownDataSource.streamLastCoolDown(id)));
+  Stream<CoolDownData> streamLastCoolDown() =>
+      _subjectCoolDownSwitch.switchMap((id) => Observable(_coolDownDataSource.streamLastCoolDown(id)));
 
   @override
   void switchLastCoolDown(String transporterId) {
@@ -50,14 +51,15 @@ class RestoringCoolDownManagerImpl extends RestoringCoolDownManager {
   }
 
   @override
-  Future<void> saveLastCoolDown(CoolDownData data) async {
-    await coolDownDataSource.retainLastCoolDown(data);
+  Future<void> saveLastCoolDown(String transporterId) async {
+    await _coolDownDataSource.retainLastCoolDown(CoolDownData(transporterId,
+        _timeProvider.timeMillis()));
   }
 
   @override
-  Future<bool> isInCoolDown(String transporterId, int nowMillis) async {
-    final cd = await coolDownDataSource.loadLastCoolDown(transporterId);
-    return timeRemainingSeconds(cd.timeMillis, nowMillis) > 0;
+  Future<bool> isInCoolDown(String transporterId) async {
+    final cd = await _coolDownDataSource.loadLastCoolDown(transporterId);
+    return timeRemainingSeconds(cd.timeMillis, _timeProvider.timeMillis()) > 0;
   }
 
   @override

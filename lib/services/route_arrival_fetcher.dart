@@ -4,8 +4,13 @@ import 'package:http/http.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
 import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
 import 'package:stpt_arrivals/services/remote_config.dart';
+import 'package:stpt_arrivals/services/restoring_cooldown_manager.dart';
 
-class RouteArrivalFetcher {
+abstract class IRouteArrivalFetcher {
+  Future<Route> getRouteArrivals(String transporterId);
+}
+
+class RouteArrivalFetcher implements IRouteArrivalFetcher {
   RouteArrivalParser _parser;
 
   RemoteConfig _config;
@@ -34,5 +39,29 @@ class RouteArrivalFetcher {
     } else {
       throw Exception(response.statusCode);
     }
+  }
+}
+
+class CachedRouteArrivalFetcher implements IRouteArrivalFetcher {
+  static Map<String, Route> _cache = Map<String, Route>();
+
+  RestoringCoolDownManager _coolDownManager;
+  RouteArrivalFetcher _routeArrivalFetcher;
+
+  CachedRouteArrivalFetcher(this._routeArrivalFetcher, this._coolDownManager);
+
+  @override
+  Future<Route> getRouteArrivals(String transporterId) async {
+    bool isInCoolDown = await _coolDownManager.isInCoolDown(transporterId);
+    var route;
+    if (isInCoolDown) {
+      route = _cache[transporterId] ?? Route(Way([], "??"), Way([], "??"));
+    } else {
+      route = await _routeArrivalFetcher.getRouteArrivals(transporterId);
+      _cache[transporterId] = route;
+      await _coolDownManager.saveLastCoolDown(transporterId);
+    }
+    _coolDownManager.switchLastCoolDown(transporterId);
+    return route;
   }
 }

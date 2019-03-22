@@ -61,37 +61,6 @@ class TransportersRepositoryImpl implements TransportersRepository {
         return Observable.just(transporters);
       }
     });
-
-//
-//    if (_transporters.isEmpty) {
-//      final localTransporters = await _transportersDataSource.findAll();
-//      if (localTransporters.isEmpty) {
-//        final buses = await _transportersTypeFetcher
-//            .fetchTransporters(TransporterType.bus);
-//        final trams = await _transportersTypeFetcher
-//            .fetchTransporters(TransporterType.tram);
-//        final trolleys = await _transportersTypeFetcher
-//            .fetchTransporters(TransporterType.trolley);
-//
-//        final remoteTransporters =
-//            [buses, trams, trolleys].expand((t) => t).toList();
-//
-//        await _transportersDataSource.save(remoteTransporters);
-//        _transporters = remoteTransporters;
-//      } else {
-//        _transporters = localTransporters;
-//      }
-//    }
-//    if (!_isSynced) {
-//      final favIds = await _favoritesDataSource.getAll();
-//      final updatedTransporters = List<Transporter>();
-//      _transporters.forEach((t) {
-//        updatedTransporters.add(favIds.contains(t.id) ? t.favorite(true) : t);
-//      });
-//      _isSynced = true;
-//      _transporters = updatedTransporters;
-//    }
-//    return List.unmodifiable(_transporters);
   }
 
   Future<List<Transporter>> _getAllRemote() async {

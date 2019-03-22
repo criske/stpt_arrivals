@@ -18,7 +18,7 @@ class ApplicationStateBloc {
       this.coolDownManager, this.timeProvider, this.transportersRepository);
 
   Stream<CoolDownUI> remainingCoolDownStream() =>
-      Observable(coolDownManager.getLastCoolDown())
+      Observable(coolDownManager.streamLastCoolDown())
           .switchMap((cd) => Observable.fromFuture(
                   transportersRepository.findById(cd.transporterId))
               .map((t) => t.name)
@@ -41,7 +41,7 @@ class ApplicationStateBloc {
   }
 
   Future<bool> isInCoolDown(String transporterId) async => await coolDownManager
-      .isInCoolDown(transporterId, timeProvider.timeMillis());
+      .isInCoolDown(transporterId);
 
   void dispose() {
     coolDownManager.dispose();

@@ -51,8 +51,9 @@ class _TransportersScreenState extends State<TransportersScreen> {
                       _selectedDropFilter = PrettyTransporterBlocFilter(
                           TransporterBlocFilter.SEARCH);
                       FocusScope.of(context).requestFocus(_searchTextFocusNode);
-                    }else{
-                      FocusScope.of(context).requestFocus(_searchTextFocusNodeReleased);
+                    } else {
+                      FocusScope.of(context)
+                          .requestFocus(_searchTextFocusNodeReleased);
                     }
                   }),
                   controller: topPageController,
@@ -75,14 +76,9 @@ class _TransportersScreenState extends State<TransportersScreen> {
                           children: snapshot.data
                               .map((t) => _TransporterWidget(
                                     transporter: t,
-                                    onSelect: (t) async {
-                                      ApplicationStateWidget.of(context)
-                                          .tryAction(
-                                              context,
-                                              t.id,
-                                              () => Navigator.pushNamed(
-                                                  context, "/arrivals",
-                                                  arguments: t));
+                                    onSelect: (t) {
+                                      Navigator.pushNamed(context, "/arrivals",
+                                          arguments: t);
                                     },
                                     onFavorite: (t) {
                                       _bloc.update(t);
