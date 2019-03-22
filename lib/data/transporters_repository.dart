@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:rxdart/rxdart.dart';
 import 'package:stpt_arrivals/data/favorites_data_source.dart';
+import 'package:stpt_arrivals/data/history_data_source.dart';
 import 'package:stpt_arrivals/data/transporters_data_source.dart';
-import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
 
@@ -16,6 +16,8 @@ abstract class TransportersRepository {
 
   Stream<List<Transporter>> streamAllContaining(String input);
 
+  Stream<List<Transporter>> streamHistory();
+
   Future<Transporter> findById(String transporterId);
 
   Future<void> save(List<Transporter> transporters);
@@ -24,15 +26,19 @@ abstract class TransportersRepository {
 }
 
 class TransportersRepositoryImpl implements TransportersRepository {
-
   FavoritesDataSource _favoritesDataSource;
 
   TransportersDataSource _transportersDataSource;
 
+  HistoryDataSource _historyDataSource;
+
   TransportersTypeFetcher _transportersTypeFetcher;
 
-  TransportersRepositoryImpl(this._favoritesDataSource,
-      this._transportersDataSource, this._transportersTypeFetcher);
+  TransportersRepositoryImpl(
+      this._favoritesDataSource,
+      this._transportersDataSource,
+      this._historyDataSource,
+      this._transportersTypeFetcher);
 
   @override
   Stream<List<Transporter>> streamAll() {
@@ -55,8 +61,8 @@ class TransportersRepositoryImpl implements TransportersRepository {
       if (transporters.isEmpty) {
         return Observable.fromFuture(_getAllRemote())
             .doOnData((remoteTransporters) async {
-                _transportersDataSource.save(remoteTransporters);
-            });
+          _transportersDataSource.save(remoteTransporters);
+        });
       } else {
         return Observable.just(transporters);
       }
@@ -75,20 +81,41 @@ class TransportersRepositoryImpl implements TransportersRepository {
 
   @override
   Stream<List<Transporter>> streamAllContaining(String input) =>
-      streamAll().map((l) =>
-        input.isEmpty
-            ? l
-            : l.where(
-              (t) => t.name.toLowerCase().contains(input.toLowerCase().trim())).toList());
-
+      streamAll().map((l) => input.isEmpty
+          ? l
+          : l
+              .where((t) =>
+                  t.name.toLowerCase().contains(input.toLowerCase().trim()))
+              .toList());
 
   @override
-  Stream<List<Transporter>> streamAllByFavorites()  =>
+  Stream<List<Transporter>> streamAllByFavorites() =>
       streamAll().map((l) => l.where((l) => l.isFavorite).toList());
 
   @override
   Stream<List<Transporter>> streamAllByType(TransporterType type) =>
       streamAll().map((l) => l.where((l) => l.type == type).toList());
+
+  @override
+  Stream<List<Transporter>> streamHistory() {
+    return Observable.combineLatest(
+        [streamAll(), _historyDataSource.streamAll()], (sources) {
+      final transporters = sources[0] as List<Transporter>;
+      if (transporters.isEmpty) {
+        return transporters;
+      } else {
+        final historyIds = sources[1] as List<String>;
+        final transportersWithHistory = List<Transporter>();
+        historyIds.forEach((id){
+          final t = transporters.firstWhere((t)=> t.id == id, orElse: null);
+          if(t != null){
+            transportersWithHistory.add(t);
+          }
+        });
+        return transportersWithHistory;
+      }
+    });
+  }
 
   @override
   Future<void> save(List<Transporter> transporters) async {
@@ -97,11 +124,11 @@ class TransportersRepositoryImpl implements TransportersRepository {
 
   @override
   Future<void> update(Transporter transporter) async {
-      if (transporter.isFavorite) {
-        await _favoritesDataSource.insert(transporter.id);
-      } else {
-        await _favoritesDataSource.delete(transporter.id);
-      }
+    if (transporter.isFavorite) {
+      await _favoritesDataSource.insert(transporter.id);
+    } else {
+      await _favoritesDataSource.delete(transporter.id);
+    }
   }
 
   @override

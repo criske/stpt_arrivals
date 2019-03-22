@@ -1,5 +1,6 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:stpt_arrivals/data/history_data_source.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/arrivals/arrival_display_bloc.dart';
 import 'package:stpt_arrivals/presentation/arrivals/arrival_ui.dart';
@@ -39,7 +40,9 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
     final cachedFetcher = CachedRouteArrivalFetcher(
         RouteArrivalFetcher(
             RouteArrivalParserImpl(timeConverter), config, client),
-        restoringCoolDownManager);
+        restoringCoolDownManager,
+        HistoryDataSourceImpl()
+    );
 
     _bloc = ArrivalDisplayBlocImpl(TimeUIConverterImpl(), cachedFetcher);
 

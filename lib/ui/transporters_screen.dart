@@ -153,6 +153,30 @@ class _TransportersScreenState extends State<TransportersScreen> {
                 }),
           ),
         ),
+        Container(
+          child: StreamBuilder<List<Transporter>>(
+            //Note: if not broadcast I'm getting error :"Bad state: Stream has already been listened to."
+              stream: _bloc.historyStream.asBroadcastStream(),
+              builder: (_, snapshot) {
+                if (!snapshot.hasData || snapshot.data.isEmpty) {
+                  return Container();
+                } else {
+                  return PopupMenuButton(
+                      icon: Icon(Icons.history),
+                      onSelected: (t) =>
+                          Navigator.pushNamed(context, "/arrivals", arguments: t),
+                      itemBuilder: (_) => snapshot.data
+                          .map((t) => PopupMenuItem(
+                              value: t,
+                              child: Text(
+                                t.name,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 18),
+                              )))
+                          .toList());
+                }
+              }),
+        )
       ],
     );
   }

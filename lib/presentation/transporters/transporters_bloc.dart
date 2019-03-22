@@ -8,6 +8,8 @@ import 'package:stpt_arrivals/presentation/disposable_bloc.dart';
 abstract class TransportersBloc implements DisposableBloc {
   final Stream<List<Transporter>> transportersStream = Stream.empty();
 
+  final Stream<List<Transporter>> historyStream = Stream.empty();
+
   final Stream<PrettyTransporterBlocFilter> selectedFilterStream =
       Stream.empty();
 
@@ -211,6 +213,9 @@ class TransportersBlocImpl implements TransportersBloc {
 
   @override
   Stream<ErrorUI> get errorStream => _stateObservable.map((s) => s.error);
+
+  @override
+  Stream<List<Transporter>> get historyStream => _repository.streamHistory();
 }
 
 TransporterBlocFilter _typeToFilter(TransporterType type) {

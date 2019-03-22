@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:stpt_arrivals/data/cool_down_data_source.dart';
 import 'package:stpt_arrivals/data/favorites_data_source.dart';
+import 'package:stpt_arrivals/data/history_data_source.dart';
 import 'package:stpt_arrivals/data/transporters_data_source.dart';
 import 'package:stpt_arrivals/data/transporters_repository.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
@@ -27,6 +28,7 @@ class ApplicationStateWidget extends StatefulWidget {
       TransportersRepositoryImpl(
           FavoritesDataSourceImpl(),
           TransportersDataSourceImpl(),
+          HistoryDataSourceImpl(),
           TransportersTypeFetcherImpl(config, client, TransporterParserImpl()));
 
   final bloc = ApplicationStateBloc(
