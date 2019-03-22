@@ -96,6 +96,7 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                   icon: Icon(Icons.timeline),
                   onPressed: () => _bloc.toggleWay(),
                 ),
+                SizedBox(width: 8,)
               ],
             ),
           ),
