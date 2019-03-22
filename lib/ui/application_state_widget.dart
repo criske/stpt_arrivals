@@ -30,7 +30,8 @@ class ApplicationStateWidget extends StatefulWidget {
           TransportersTypeFetcherImpl(config, client, TransporterParserImpl()));
 
   final bloc = ApplicationStateBloc(
-    RestoringCoolDownManagerImpl(CoolDownDataSourceImpl(), SystemTimeProvider()),
+    RestoringCoolDownManagerImpl(
+        CoolDownDataSourceImpl(), SystemTimeProvider()),
     SystemTimeProvider(),
     transporterRepository,
   );
@@ -67,7 +68,6 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
   @override
   Widget build(BuildContext context) => WillPopScope(onWillPop: () async {
         final navigatorState = navigatorKey.currentState;
-
         return navigatorState.canPop() ? !navigatorState.pop() : true;
       }, child: Scaffold(body: LayoutBuilder(builder: (ctx, c) {
         final screenSize = MediaQuery.of(ctx).size;
