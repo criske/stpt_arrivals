@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:rxdart/rxdart.dart';
 import 'package:stpt_arrivals/data/favorites_data_source.dart';
 import 'package:stpt_arrivals/data/transporters_data_source.dart';
 import 'package:stpt_arrivals/models/error.dart';
@@ -7,13 +8,13 @@ import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
 
 abstract class TransportersRepository {
-  Future<List<Transporter>> findAll();
+  Stream<List<Transporter>> streamAll();
 
-  Future<List<Transporter>> findAllByType(TransporterType type);
+  Stream<List<Transporter>> streamAllByType(TransporterType type);
 
-  Future<List<Transporter>> findAllByFavorites();
+  Stream<List<Transporter>> streamAllByFavorites();
 
-  Future<List<Transporter>> findAllContaining(String input);
+  Stream<List<Transporter>> streamAllContaining(String input);
 
   Future<Transporter> findById(String transporterId);
 
@@ -23,7 +24,6 @@ abstract class TransportersRepository {
 }
 
 class TransportersRepositoryImpl implements TransportersRepository {
-  List<Transporter> _transporters = List<Transporter>();
 
   FavoritesDataSource _favoritesDataSource;
 
@@ -34,87 +34,108 @@ class TransportersRepositoryImpl implements TransportersRepository {
   TransportersRepositoryImpl(this._favoritesDataSource,
       this._transportersDataSource, this._transportersTypeFetcher);
 
-  bool _isSynced = false;
-
-  TransportersRepositoryImpl.withData(
-      FavoritesDataSource favDs, List<Transporter> data)
-      : _transporters = data.toList(),
-        _favoritesDataSource = favDs;
-
   @override
-  Future<List<Transporter>> findAll() async {
-    if (_transporters.isEmpty) {
-      final localTransporters = await _transportersDataSource.findAll();
-      if (localTransporters.isEmpty) {
-        final buses = await _transportersTypeFetcher
-            .fetchTransporters(TransporterType.bus);
-        final trams = await _transportersTypeFetcher
-            .fetchTransporters(TransporterType.tram);
-        final trolleys = await _transportersTypeFetcher
-            .fetchTransporters(TransporterType.trolley);
-
-        final remoteTransporters =
-            [buses, trams, trolleys].expand((t) => t).toList();
-
-        await _transportersDataSource.save(remoteTransporters);
-        _transporters = remoteTransporters;
+  Stream<List<Transporter>> streamAll() {
+    return Observable.combineLatest([
+      Observable(_transportersDataSource.streamAll()),
+      Observable(_favoritesDataSource.streamAll())
+    ], (sources) {
+      final transporters = sources[0] as List<Transporter>;
+      if (transporters.isEmpty) {
+        return transporters;
       } else {
-        _transporters = localTransporters;
+        final favIds = sources[1] as Set<String>;
+        final transportersWithFav = List<Transporter>();
+        transporters.forEach((t) {
+          transportersWithFav.add(favIds.contains(t.id) ? t.favorite(true) : t);
+        });
+        return transportersWithFav;
       }
-    }
-    if (!_isSynced) {
-      final favIds = await _favoritesDataSource.getAll();
-      final updatedTransporters = List<Transporter>();
-      _transporters.forEach((t) {
-        updatedTransporters.add(favIds.contains(t.id) ? t.favorite(true) : t);
-      });
-      _isSynced = true;
-      _transporters = updatedTransporters;
-    }
-    return List.unmodifiable(_transporters);
+    }).switchMap((transporters) {
+      if (transporters.isEmpty) {
+        return Observable.fromFuture(_getAllRemote())
+            .doOnData((remoteTransporters) async {
+                _transportersDataSource.save(remoteTransporters);
+            });
+      } else {
+        return Observable.just(transporters);
+      }
+    });
+
+//
+//    if (_transporters.isEmpty) {
+//      final localTransporters = await _transportersDataSource.findAll();
+//      if (localTransporters.isEmpty) {
+//        final buses = await _transportersTypeFetcher
+//            .fetchTransporters(TransporterType.bus);
+//        final trams = await _transportersTypeFetcher
+//            .fetchTransporters(TransporterType.tram);
+//        final trolleys = await _transportersTypeFetcher
+//            .fetchTransporters(TransporterType.trolley);
+//
+//        final remoteTransporters =
+//            [buses, trams, trolleys].expand((t) => t).toList();
+//
+//        await _transportersDataSource.save(remoteTransporters);
+//        _transporters = remoteTransporters;
+//      } else {
+//        _transporters = localTransporters;
+//      }
+//    }
+//    if (!_isSynced) {
+//      final favIds = await _favoritesDataSource.getAll();
+//      final updatedTransporters = List<Transporter>();
+//      _transporters.forEach((t) {
+//        updatedTransporters.add(favIds.contains(t.id) ? t.favorite(true) : t);
+//      });
+//      _isSynced = true;
+//      _transporters = updatedTransporters;
+//    }
+//    return List.unmodifiable(_transporters);
+  }
+
+  Future<List<Transporter>> _getAllRemote() async {
+    final buses =
+        await _transportersTypeFetcher.fetchTransporters(TransporterType.bus);
+    final trams =
+        await _transportersTypeFetcher.fetchTransporters(TransporterType.tram);
+    final trolleys = await _transportersTypeFetcher
+        .fetchTransporters(TransporterType.trolley);
+    return [buses, trams, trolleys].expand((t) => t).toList();
   }
 
   @override
-  Future<List<Transporter>> findAllContaining(String input) async => input
-          .isEmpty
-      ? await findAll()
-      : (await findAll())
-          .where(
-              (t) => t.name.toLowerCase().contains(input.toLowerCase().trim()))
-          .toList();
+  Stream<List<Transporter>> streamAllContaining(String input) =>
+      streamAll().map((l) =>
+        input.isEmpty
+            ? l
+            : l.where(
+              (t) => t.name.toLowerCase().contains(input.toLowerCase().trim())).toList());
+
 
   @override
-  Future<List<Transporter>> findAllByFavorites() async =>
-      (await findAll()).where((t) => t.isFavorite).toList();
+  Stream<List<Transporter>> streamAllByFavorites()  =>
+      streamAll().map((l) => l.where((l) => l.isFavorite).toList());
 
   @override
-  Future<List<Transporter>> findAllByType(TransporterType type) async =>
-      (await findAll()).where((t) => t.type == type).toList();
+  Stream<List<Transporter>> streamAllByType(TransporterType type) =>
+      streamAll().map((l) => l.where((l) => l.type == type).toList());
 
   @override
   Future<void> save(List<Transporter> transporters) async {
-    _transporters.clear();
-    _transporters.addAll(transporters);
-    _transportersDataSource.save(transporters);
+    await _transportersDataSource.save(transporters);
   }
 
   @override
   Future<void> update(Transporter transporter) async {
-    final index = _transporters.indexWhere((t) => t.id == transporter.id);
-    if (index == -1) throw MessageError("Transporter not found");
-    final oldTransporter = _transporters[index];
-    if (oldTransporter.isFavorite != transporter.isFavorite) {
       if (transporter.isFavorite) {
         await _favoritesDataSource.insert(transporter.id);
       } else {
         await _favoritesDataSource.delete(transporter.id);
       }
-    }
-    _transporters.removeAt(index);
-    _transporters.insert(index, transporter);
   }
 
   @override
   Future<Transporter> findById(String transporterId) async =>
-      _transporters.firstWhere((t) => t.id == transporterId);
+      _transportersDataSource.findById(transporterId);
 }

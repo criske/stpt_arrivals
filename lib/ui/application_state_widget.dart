@@ -103,7 +103,7 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
       })));
 
   Widget _buildCoolDownWidget() {
-    final ignoreDebugMode = true;
+    final ignoreDebugMode = false;
     return isInDebugMode && !ignoreDebugMode
         ? Container()
         : Container(

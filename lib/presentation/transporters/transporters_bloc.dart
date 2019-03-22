@@ -139,16 +139,16 @@ class TransportersBlocImpl implements TransportersBloc {
 
   Observable<_Result> _findTransportersByAction(_Action action) {
     if (action is _ActionAll) {
-      return Observable.fromFuture(_repository.findAll())
+      return Observable(_repository.streamAll())
           .map((l) => _ResultSuccess(l, TransporterBlocFilter.ALL));
     } else if (action is _ActionType) {
-      return Observable.fromFuture(_repository.findAllByType(action.type))
+      return Observable(_repository.streamAllByType(action.type))
           .map((l) => _ResultSuccess(l, _typeToFilter(action.type)));
     } else if (action is _ActionFavorites) {
-      return Observable.fromFuture(_repository.findAllByFavorites())
+      return Observable(_repository.streamAllByFavorites())
           .map((l) => _ResultSuccess(l, TransporterBlocFilter.FAVORITE));
     } else if (action is _ActionSearch) {
-      return Observable.fromFuture(_repository.findAllContaining(action.input))
+      return Observable(_repository.streamAllContaining(action.input))
           .map((l) => _ResultSuccess(l, TransporterBlocFilter.SEARCH));
     }
     if (action is _ActionUpdate) {

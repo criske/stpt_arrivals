@@ -15,7 +15,6 @@ import 'package:stpt_arrivals/services/restoring_cooldown_manager.dart';
 import 'package:stpt_arrivals/services/route_arrival_fetcher.dart';
 
 abstract class ArrivalDisplayBloc implements DisposableBloc {
-
   final Stream<ArrivalState> streamState = Stream.empty();
 
   final Stream<bool> loadingStream = Stream.empty();
@@ -33,9 +32,7 @@ abstract class ArrivalDisplayBloc implements DisposableBloc {
   void toggleWay();
 }
 
-
 class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
-
   TimeProvider _timeProvider;
 
   TimeUIConverter _timeUIConverter;
@@ -51,7 +48,7 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   ArrivalDisplayBlocImpl(this._timeProvider, this._timeUIConverter,
       this._arrivalFetcher, this._coolDownManager,
       [this._initialState]) {
-   final loadStream = _actionLoadSubject.stream;
+    final loadStream = _actionLoadSubject.stream;
     var toggleStream = _actionToggleSubject.stream;
     _stateObservable = Observable.merge([loadStream, toggleStream])
         .flatMap(_actionController)
@@ -73,9 +70,8 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       _actionCancelSubject.add(_Action.cancel(_timeProvider.timeMillis()));
 
   @override
-  void load(String transporterId) =>
-      _actionLoadSubject
-          .add(_Action.load(_timeProvider.timeMillis(), transporterId));
+  void load(String transporterId) => _actionLoadSubject
+      .add(_Action.load(_timeProvider.timeMillis(), transporterId));
 
   @override
   void toggleWay() =>
@@ -92,15 +88,10 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
   Stream<ArrivalState> get streamState => _stateObservable;
 
   @override
-  Stream<List<ArrivalUI>> get arrivalsStream =>
-      _stateObservable
-          .map((s) =>
-      s.toggleableRoute
-          .getWay()
-          .arrivals)
-          .distinct((prev, next) => ListEquality().equals(prev, next))
-          .map((arrivals) =>
-          arrivals.map((a) {
+  Stream<List<ArrivalUI>> get arrivalsStream => _stateObservable
+      .map((s) => s.toggleableRoute.getWay().arrivals)
+      .distinct((prev, next) => ListEquality().equals(prev, next))
+      .map((arrivals) => arrivals.map((a) {
             final timeUI1 = _timeUIConverter.toUI(a.time);
             final timeUI2 = _timeUIConverter.toUI(a.time2);
             return ArrivalUI(a.station.id, a.station.name, timeUI1, timeUI2);
@@ -137,36 +128,33 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
 
   @override
   Stream<String> get wayNameStream =>
-      _stateObservable.map((s) =>
-      s.toggleableRoute
-          .getWay()
-          .name).distinct();
+      _stateObservable.map((s) => s.toggleableRoute.getWay().name).distinct();
 
   Stream<ArrivalState> _actionController(action) {
     if (action is _ActionIdle) {
       return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE));
     } else if (action is _ActionLoad) {
       return Observable.fromFuture(
-          _arrivalFetcher.getRouteArrivals(action.transporterId))
+              _arrivalFetcher.getRouteArrivals(action.transporterId))
           .map((route) => ArrivalState.partialRoute(route))
-          .flatMap((state) =>
-          Observable.fromFuture(
-              _coolDownManager.saveLastCoolDown(CoolDownData(action.transporterId, action.time)))
-              .map((_) => state))
+          .doOnData((_) async {
+            _coolDownManager.saveLastCoolDown(
+                CoolDownData(action.transporterId, action.time));
+          })
           .doOnError((e, stack) {
             print(stack);
-        _errorStream.add(_errorMapper(e));
-        _actionLoadSubject.add(_Action.idle);
-      })
+            _errorStream.add(_errorMapper(e));
+            _actionLoadSubject.add(_Action.idle);
+          })
           .onErrorReturnWith((e) => ArrivalState.partialFlag(StateFlag.IDLE))
           .startWith(ArrivalState.partialFlag(StateFlag.LOADING))
           .takeUntil(_actionCancelSubject.stream
-          .doOnData((_) => _actionLoadSubject.add(_Action.idle)));
-    }else if (action is _ActionToggle) {
+              .doOnData((_) => _actionLoadSubject.add(_Action.idle)));
+    } else if (action is _ActionToggle) {
       return Observable.just(ArrivalState.partialFlag(StateFlag.TOGGLE));
     } else {
       return Observable.just(ArrivalState.partialFlag(StateFlag.IDLE)).doOnData(
-              (_) => _errorStream.add(ErrorUI("Unprocessed action $action")));
+          (_) => _errorStream.add(ErrorUI("Unprocessed action $action")));
     }
   }
 
@@ -228,7 +216,7 @@ class _ActionIdle extends _Action {
 @immutable
 class ArrivalState {
   static final _emptyRoute =
-  ToggleableRoute(Route(Way(List(), ""), Way(List(), "")));
+      ToggleableRoute(Route(Way(List(), ""), Way(List(), "")));
 
   factory ArrivalState.partialRoute(Route route) =>
       ArrivalState(ToggleableRoute(route), StateFlag.FINISHED);
@@ -256,8 +244,8 @@ class ArrivalState {
   @override
   bool operator ==(other) =>
       other is ArrivalState &&
-          this.flag == other.flag &&
-          this.toggleableRoute == other.toggleableRoute;
+      this.flag == other.flag &&
+      this.toggleableRoute == other.toggleableRoute;
 
   @override
   int get hashCode => hashValues(toggleableRoute, flag);
@@ -283,8 +271,8 @@ class ToggleableRoute {
   @override
   bool operator ==(other) =>
       other is ToggleableRoute &&
-          this._isWayTo == other._isWayTo &&
-          this._route == other._route;
+      this._isWayTo == other._isWayTo &&
+      this._route == other._route;
 
   @override
   int get hashCode => hashValues(_route, _isWayTo);

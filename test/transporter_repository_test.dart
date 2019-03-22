@@ -19,7 +19,7 @@ void main() {
   });
 
   test("should get all transporters", () async {
-    final all = await repository.findAll();
+    final all = await repository.streamAll();
     expect(all, [
       Transporter("1", "1", TransporterType.bus),
       Transporter("2", "2", TransporterType.tram),
@@ -29,14 +29,14 @@ void main() {
   });
 
   test("should get all transporters by type", () async {
-    final all = await repository.findAllByType(TransporterType.bus);
+    final all = await repository.streamAllByType(TransporterType.bus);
     expect(all, [Transporter("1", "1", TransporterType.bus)]);
   });
 
   test("should get all transporters by fav", () async {
     await repository.update(Transporter("1", "1", TransporterType.bus, true));
-    final all = await repository.findAllByFavorites();
-    expect((await repository.findAll()).length, 4);
+    final all = await repository.streamAllByFavorites();
+    expect((await repository.streamAll()).length, 4);
     expect(all, [Transporter("1", "1", TransporterType.bus, true)]);
   });
 
