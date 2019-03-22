@@ -103,7 +103,8 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
       })));
 
   Widget _buildCoolDownWidget() {
-    return isInDebugMode
+    final ignoreDebugMode = true;
+    return isInDebugMode && !ignoreDebugMode
         ? Container()
         : Container(
             width: 80,
@@ -117,6 +118,7 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
                           remaining: snapshot.data.percent,
                           remainingText:
                               snapshot.data.remainingSeconds.toString(),
+                          ignoreDebugMode: ignoreDebugMode,
                         )
                       : Container();
                 }));

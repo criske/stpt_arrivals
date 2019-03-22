@@ -32,7 +32,7 @@ abstract class RestoringCoolDownManager {
 class RestoringCoolDownManagerImpl extends RestoringCoolDownManager {
   CoolDownDataSource coolDownDataSource;
 
-  BehaviorSubject<String> _subjectLastCoolDown = BehaviorSubject()
+  BehaviorSubject<String> _subjectCoolDownSwitch = BehaviorSubject()
     ..add("");
 
 
@@ -42,19 +42,16 @@ class RestoringCoolDownManagerImpl extends RestoringCoolDownManager {
 
   @override
   Stream<CoolDownData> getLastCoolDown() =>
-      _subjectLastCoolDown.switchMap((id) {
-        return Observable.fromFuture(coolDownDataSource.loadLastCoolDown(id));
-      });
+      _subjectCoolDownSwitch.switchMap((id) => Observable(coolDownDataSource.streamLastCoolDown(id)));
 
   @override
   void switchLastCoolDown(String transporterId) {
-    _subjectLastCoolDown.add(transporterId);
+    _subjectCoolDownSwitch.add(transporterId);
   }
 
   @override
   Future<void> saveLastCoolDown(CoolDownData data) async {
     await coolDownDataSource.retainLastCoolDown(data);
-    _subjectLastCoolDown.add(data.transporterId);
   }
 
   @override
@@ -65,6 +62,6 @@ class RestoringCoolDownManagerImpl extends RestoringCoolDownManager {
 
   @override
   void dispose() {
-    _subjectLastCoolDown.close();
+    _subjectCoolDownSwitch.close();
   }
 }

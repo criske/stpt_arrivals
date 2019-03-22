@@ -1,6 +1,9 @@
+import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 abstract class CoolDownDataSource {
+  Stream<CoolDownData> streamLastCoolDown([String transporterId = ""]);
+
   Future<CoolDownData> loadLastCoolDown([String transporterId = ""]);
 
   Future<void> retainLastCoolDown(CoolDownData data);
@@ -10,6 +13,15 @@ class CoolDownDataSourceImpl implements CoolDownDataSource {
   //static const _restoringCoolDownKey = "RESTORING_COOLDOWN_KEY";
   static const _restoringCoolDownKey = "RESTORING_COOLDOWN_LIST_KEY";
 
+  static final CoolDownDataSourceImpl _singleton =
+      CoolDownDataSourceImpl._internal();
+
+  factory CoolDownDataSourceImpl() => _singleton;
+
+  CoolDownDataSourceImpl._internal();
+
+  PublishSubject<String> trigger = PublishSubject<String>();
+
   @override
   Future<CoolDownData> loadLastCoolDown([String transporterId = ""]) async {
     final prefs = await SharedPreferences.getInstance();
@@ -17,12 +29,21 @@ class CoolDownDataSourceImpl implements CoolDownDataSource {
     final id = transporterId.trim();
     if (id.isEmpty) {
       //sort descending => b compareTo a (asc will a compareTo b)
-      list.sort((a, b) =>  b.timeMillis.compareTo(a.timeMillis));
+      list.sort((a, b) => b.timeMillis.compareTo(a.timeMillis));
       return list.isEmpty ? CoolDownData.no_data : list.first;
     } else {
       return list.firstWhere((cd) => cd.transporterId == id,
           orElse: () => CoolDownData(transporterId, 0));
     }
+  }
+
+  @override
+  Stream<CoolDownData> streamLastCoolDown([String transporterId = ""]) {
+    return Observable.just(transporterId)
+        .mergeWith([trigger])
+        .where((id) => id == transporterId)
+        .switchMap(
+            (id) => Observable.fromFuture(loadLastCoolDown(id)));
   }
 
   @override
@@ -34,6 +55,7 @@ class CoolDownDataSourceImpl implements CoolDownDataSource {
     list.add(data);
     await prefs.setStringList(
         _restoringCoolDownKey, list.map(_encode).toList());
+    trigger.add(data.transporterId);
   }
 
   Iterable<CoolDownData> _getAll(SharedPreferences prefs) =>

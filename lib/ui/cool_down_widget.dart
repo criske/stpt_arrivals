@@ -9,18 +9,20 @@ class CoolDownWidget extends StatelessWidget {
   final double remaining;
   final String remainingText;
   final String label;
+  final bool ignoreDebugMode;
 
   CoolDownWidget({
     Key key,
     this.label,
     this.remaining,
     this.remainingText = "",
+    this.ignoreDebugMode
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final hide = remaining <= 0.0;
-    var progressWidget = isInDebugMode ? _widgetDebugMode() : _widgetRelease();
+    var progressWidget = isInDebugMode && !ignoreDebugMode ? _widgetDebugMode() : _widgetRelease();
     return hide ? Container() : progressWidget;
   }
 
