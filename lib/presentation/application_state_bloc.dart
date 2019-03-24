@@ -16,16 +16,16 @@ class ApplicationStateBloc {
 
   ApplicationStateBloc(
       this.coolDownManager, this.timeProvider, this.transportersRepository);
-
   Stream<CoolDownUI> remainingCoolDownStream() =>
       Observable(coolDownManager.streamLastCoolDown())
           .switchMap((cd) => Observable.fromFuture(
                   transportersRepository.findById(cd.transporterId))
               .map((t) => t.name)
-              .flatMap((name) => Observable.periodic(Duration(milliseconds: 1),
+              .flatMap((name) => Observable.periodic(Duration(seconds: 1),
                       (_) => _createCoolDownFromData(name, cd))
                   .startWith(_createCoolDownFromData(name, cd))
                   .takeWhile((cd) => cd.remainingSeconds >= 0)))
+          .startWith(CoolDownUI.noCoolDown)
           .share();
 
   CoolDownUI _createCoolDownFromData(String name, CoolDownData data) {

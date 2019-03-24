@@ -66,7 +66,7 @@ class TransportersRepositoryImpl implements TransportersRepository {
       } else {
         return Observable.just(transporters);
       }
-    });
+    }).share();
   }
 
   Future<List<Transporter>> _getAllRemote() async {

@@ -113,8 +113,9 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
             height: 80,
             child: StreamBuilder<CoolDownUI>(
                 stream: widget.bloc.remainingCoolDownStream(),
+                initialData: CoolDownUI.noCoolDown,
                 builder: (context, snapshot) {
-                  return snapshot.hasData
+                  return (snapshot.hasData || snapshot.data != CoolDownUI.noCoolDown)
                       ? CoolDownWidget(
                           label: snapshot.data.transporterName,
                           remaining: snapshot.data.percent,
