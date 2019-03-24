@@ -6,7 +6,7 @@ import 'package:stpt_arrivals/models/error.dart';
 import 'time_converter.dart';
 
 abstract class RouteArrivalParser {
-  Route parse(String rawData);
+  Route parse(String transporterId, String rawData);
 }
 
 class RouteArrivalParserImpl implements RouteArrivalParser {
@@ -17,7 +17,7 @@ class RouteArrivalParserImpl implements RouteArrivalParser {
   RouteArrivalParserImpl(this._timeConverter);
 
   @override
-  Route parse(String rawData) {
+  Route parse(String transporterId, String rawData) {
     final doc = html.parse(rawData);
 
     final tables = doc.getElementsByTagName("table");
@@ -26,6 +26,7 @@ class RouteArrivalParserImpl implements RouteArrivalParser {
     Way way2;
     Way currentWay;
     var wayCount = 0;
+    var stationGenId = 0;
 
     tables.forEach((Element t) {
       if (_extractTextFromColumn(t, 0).contains(_404)) {
@@ -44,7 +45,10 @@ class RouteArrivalParserImpl implements RouteArrivalParser {
         }
         wayCount++;
       } else if (!_isHeader(t)) {
-        final arrival = Arrival(Station(0, _extractTextFromColumn(t, 0)),
+        var stationName = _extractTextFromColumn(t, 0);
+        final arrival = Arrival(
+            Station(
+                Station.createID(transporterId, stationGenId++), stationName, false),
             _timeConverter.toTime(_extractTextFromColumn(t, 1)));
         currentWay.arrivals.add(arrival);
       }

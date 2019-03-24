@@ -24,13 +24,13 @@ class RouteArrivalFetcher implements IRouteArrivalFetcher {
     Response response = await _client.get(_config.routeURL(transporterId));
     if (response.statusCode == 200) {
       try {
-        return _parser.parse(response.body);
+        return _parser.parse(transporterId, response.body);
       } catch (e) {
         if (e is RouteNotFoundError) {
           response =
               await _client.get(_config.routeURLSpecialId(transporterId));
           if (response.statusCode == 200) {
-            return _parser.parse(response.body);
+            return _parser.parse(transporterId, response.body);
           } else {
             throw Exception(response.statusCode);
           }

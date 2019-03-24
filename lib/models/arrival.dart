@@ -11,7 +11,7 @@ class Arrival {
   final Time time;
 
   final Time time2;
-
+  
   const Arrival(this.station, this.time, [this.time2]);
 
   @override
@@ -71,19 +71,24 @@ class Route {
 
 @immutable
 class Station {
-  final int id;
+  final String id;
 
   final String name;
 
-  const Station(this.id, this.name);
+  final bool pinned;
+
+  const Station(this.id, this.name, this.pinned);
 
   @override
-  int get hashCode => hashValues(id, name);
+  int get hashCode => hashValues(id, name, pinned);
 
   @override
   bool operator ==(other) =>
-      other is Station && this.id == other.id && this.name == other.name;
+      other is Station && this.id == other.id && this.name == other.name && pinned == other.pinned;
 
   @override
-  String toString() => "Station:[id:$id, name, $name]";
+  String toString() => "Station:[id:$id, name:$name, pinned:$pinned]";
+
+  static String createID(String transporterId, int genId) =>
+      "$transporterId:$genId";
 }

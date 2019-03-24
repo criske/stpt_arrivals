@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:stpt_arrivals/data/pinned_stations_data_source.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
 import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/presentation/arrivals/arrival_ui.dart';
@@ -23,11 +24,15 @@ abstract class ArrivalDisplayBloc implements DisposableBloc {
 
   final Stream<List<ArrivalUI>> arrivalsStream = Stream.empty();
 
+  final Stream<ArrivalUI> pinnedStream = Stream.empty();
+
   void load(String transporterId);
 
   void cancel();
 
   void toggleWay();
+
+  Future<void> pin(String stationId, [bool add = true]);
 }
 
 class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
@@ -37,11 +42,14 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
 
   ArrivalState _initialState;
 
+  PinnedStationsDataSource _pinnedStationsDataSource;
+
   Observable<ArrivalState> _stateObservable;
 
   ArrivalDisplayBlocImpl(
       this._timeUIConverter,
       this._arrivalFetcher,
+      this._pinnedStationsDataSource,
       [this._initialState]) {
     final loadStream = _actionLoadSubject.stream;
     var toggleStream = _actionToggleSubject.stream;
@@ -87,8 +95,16 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
       .map((arrivals) => arrivals.map((a) {
             final timeUI1 = _timeUIConverter.toUI(a.time);
             final timeUI2 = _timeUIConverter.toUI(a.time2);
-            return ArrivalUI(a.station.id, a.station.name, timeUI1, timeUI2);
+            return ArrivalUI(a.station.id, a.station.name, timeUI1, timeUI2, a.station.pinned);
           }).toList());
+
+  @override
+  Stream<ArrivalUI> get pinnedStream => Observable.combineLatest([arrivalsStream,
+      _pinnedStationsDataSource.streamAll()],(sources){
+      final arrivals = sources[0] as  List<ArrivalUI>;
+      final pinnedStations = sources[1] as Set<String>;
+      return arrivals.firstWhere((a) => pinnedStations.contains(a.stationId), orElse: () =>ArrivalUI.noArrival);
+  });
 
   @override
   Stream<ErrorUI> get errorStream => _errorStream.stream;
@@ -163,6 +179,16 @@ class ArrivalDisplayBlocImpl implements ArrivalDisplayBloc {
     }
     return state;
   }
+
+  @override
+  Future<void> pin(String stationId, [bool add = true]) async {
+    if(add){
+      _pinnedStationsDataSource.insert(stationId);
+    }else{
+      _pinnedStationsDataSource.delete(stationId);
+    }
+  }
+
 }
 
 @immutable

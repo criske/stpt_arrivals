@@ -12,12 +12,15 @@ class ErrorUI extends Error {
 }
 
 class ArrivalUI {
-  final int stationId;
+  final String stationId;
   final String stationName;
   final TimeUI time1;
   final TimeUI time2;
+  final bool pinned;
 
-  ArrivalUI(this.stationId, this.stationName, this.time1, this.time2);
+  ArrivalUI(this.stationId, this.stationName, this.time1, this.time2, this.pinned);
+
+  static final ArrivalUI noArrival = ArrivalUI("", "", TimeUI.none(), TimeUI.none(), false);
 
 }
 
