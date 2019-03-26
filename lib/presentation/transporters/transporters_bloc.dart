@@ -1,4 +1,5 @@
 import 'package:rxdart/rxdart.dart';
+import 'package:stpt_arrivals/data/hit_data_source.dart';
 import 'package:stpt_arrivals/data/transporters_repository.dart';
 import 'package:stpt_arrivals/models/error.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
@@ -100,7 +101,9 @@ class TransportersBlocImpl implements TransportersBloc {
           } else {
             return _findTransportersByAction(action)
                 .startWith(_ResultLoading.inst)
-                .onErrorReturnWith((e) => _ResultError(e));
+                .onErrorReturnWith((e) {
+                  return _ResultError(e);
+                });
           }
         })
         .scan(_stateReducer, _State.init)

@@ -27,7 +27,8 @@ class _TransportersScreenState extends State<TransportersScreen> {
   void initState() {
     super.initState();
     _bloc = TransportersBlocImpl(
-        ApplicationStateWidget.of(context).bloc.transportersRepository);
+      ApplicationStateWidget.of(context).bloc.transportersRepository,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ApplicationStateWidget.of(context).bloc.switchLastCoolDown();
     });
@@ -155,7 +156,7 @@ class _TransportersScreenState extends State<TransportersScreen> {
         ),
         Container(
           child: StreamBuilder<List<Transporter>>(
-            //Note: if not broadcast I'm getting error :"Bad state: Stream has already been listened to."
+              //Note: if not broadcast I'm getting error :"Bad state: Stream has already been listened to."
               stream: _bloc.historyStream.asBroadcastStream(),
               builder: (_, snapshot) {
                 if (!snapshot.hasData || snapshot.data.isEmpty) {
@@ -163,8 +164,9 @@ class _TransportersScreenState extends State<TransportersScreen> {
                 } else {
                   return PopupMenuButton(
                       icon: Icon(Icons.history),
-                      onSelected: (t) =>
-                          Navigator.pushNamed(context, "/arrivals", arguments: t),
+                      onSelected: (t) => Navigator.pushNamed(
+                          context, "/arrivals",
+                          arguments: t),
                       itemBuilder: (_) => snapshot.data
                           .map((t) => PopupMenuItem(
                               value: t,

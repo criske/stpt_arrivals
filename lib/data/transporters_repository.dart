@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:rxdart/rxdart.dart';
 import 'package:stpt_arrivals/data/favorites_data_source.dart';
 import 'package:stpt_arrivals/data/history_data_source.dart';
+import 'package:stpt_arrivals/data/hit_data_source.dart';
 import 'package:stpt_arrivals/data/transporters_data_source.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/services/transporters_type_fetcher.dart';
@@ -32,19 +33,23 @@ class TransportersRepositoryImpl implements TransportersRepository {
 
   HistoryDataSource _historyDataSource;
 
+  HitDataSource _hitDataSource;
+
   TransportersTypeFetcher _transportersTypeFetcher;
 
   TransportersRepositoryImpl(
       this._favoritesDataSource,
       this._transportersDataSource,
       this._historyDataSource,
+      this._hitDataSource,
       this._transportersTypeFetcher);
 
   @override
   Stream<List<Transporter>> streamAll() {
     return Observable.combineLatest([
       Observable(_transportersDataSource.streamAll()),
-      Observable(_favoritesDataSource.streamAll())
+      Observable(_favoritesDataSource.streamAll()),
+      Observable(_hitDataSource.streamAll())
     ], (sources) {
       final transporters = sources[0] as List<Transporter>;
       if (transporters.isEmpty) {
@@ -55,7 +60,8 @@ class TransportersRepositoryImpl implements TransportersRepository {
         transporters.forEach((t) {
           transportersWithFav.add(favIds.contains(t.id) ? t.favorite(true) : t);
         });
-        return transportersWithFav;
+        final hitIds = sources[2] as Set<Hit>;
+        return _sortByHits(transportersWithFav, hitIds);
       }
     }).switchMap((transporters) {
       if (transporters.isEmpty) {
@@ -67,6 +73,26 @@ class TransportersRepositoryImpl implements TransportersRepository {
         return Observable.just(transporters);
       }
     }).share();
+  }
+
+  List<Transporter> _sortByHits(List<Transporter> l, Set<Hit> hits) {
+    //todo: 2*n^2  un-efficient algorithm ahead
+    final out = List<Transporter>();
+    final leftOut = l
+        .where((t) =>
+            hits.firstWhere((h) => h.transporterId == t.id,
+                orElse: () => null) ==
+            null)
+        .toList();
+    hits.forEach((h) {
+      final transporterHit =
+          l.firstWhere((t) => h.transporterId == t.id, orElse: () => null);
+      if (transporterHit != null) {
+        out.add(transporterHit);
+      }
+    });
+    out.addAll(leftOut);
+    return out;
   }
 
   Future<List<Transporter>> _getAllRemote() async {
@@ -106,9 +132,9 @@ class TransportersRepositoryImpl implements TransportersRepository {
       } else {
         final historyIds = sources[1] as List<String>;
         final transportersWithHistory = List<Transporter>();
-        historyIds.forEach((id){
-          final t = transporters.firstWhere((t)=> t.id == id, orElse: null);
-          if(t != null){
+        historyIds.forEach((id) {
+          final t = transporters.firstWhere((t) => t.id == id, orElse: null);
+          if (t != null) {
             transportersWithHistory.add(t);
           }
         });

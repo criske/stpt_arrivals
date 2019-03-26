@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:http/http.dart';
 import 'package:stpt_arrivals/data/history_data_source.dart';
+import 'package:stpt_arrivals/data/hit_data_source.dart';
 import 'package:stpt_arrivals/models/arrival.dart';
 import 'package:stpt_arrivals/services/parser/route_arrival_parser.dart';
 import 'package:stpt_arrivals/services/remote_config.dart';
@@ -49,11 +50,13 @@ class CachedRouteArrivalFetcher implements IRouteArrivalFetcher {
   RestoringCoolDownManager _coolDownManager;
   RouteArrivalFetcher _routeArrivalFetcher;
   HistoryDataSource _historyDataSource;
+  HitDataSource _hitDataSource;
 
   CachedRouteArrivalFetcher(
       this._routeArrivalFetcher,
       this._coolDownManager,
-      this._historyDataSource
+      this._historyDataSource,
+      this._hitDataSource
       );
 
   @override
@@ -68,6 +71,7 @@ class CachedRouteArrivalFetcher implements IRouteArrivalFetcher {
       await _coolDownManager.saveLastCoolDown(transporterId);
     }
     await _historyDataSource.addToHistory(transporterId);
+    await _hitDataSource.incrementHit(transporterId);
     _coolDownManager.switchLastCoolDown(transporterId);
     return route;
   }

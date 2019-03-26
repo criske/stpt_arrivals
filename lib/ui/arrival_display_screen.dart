@@ -1,6 +1,7 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:stpt_arrivals/data/history_data_source.dart';
+import 'package:stpt_arrivals/data/hit_data_source.dart';
 import 'package:stpt_arrivals/data/pinned_stations_data_source.dart';
 import 'package:stpt_arrivals/models/transporter.dart';
 import 'package:stpt_arrivals/presentation/arrivals/arrival_display_bloc.dart';
@@ -42,7 +43,8 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
         RouteArrivalFetcher(
             RouteArrivalParserImpl(timeConverter), config, client),
         restoringCoolDownManager,
-        HistoryDataSourceImpl());
+        HistoryDataSourceImpl(),
+        HitDataSourceImpl());
 
     _bloc = ArrivalDisplayBlocImpl(
         TimeUIConverterImpl(), cachedFetcher, PinnedStationsDataSourceImpl());
@@ -114,28 +116,36 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                   stream: _bloc.pinnedStream,
                   //initialData: ArrivalUI.noArrival,
                   builder: (context, snapshot) {
-                    return !snapshot.hasData || (snapshot.data ==
-                          ArrivalUI.noArrival)
-                      ? Container()
-                      : Row(
-                          children: <Widget>[
-                            SizedBox(width: 16,),
-                            Expanded(
-                              child: Dismissible(
-                                key: ObjectKey(snapshot.data.stationId),
-                                child: _ArrivalItemWidget(arrival: snapshot.data),
-                                direction: DismissDirection.endToStart,
-                                onDismissed: (_) async {
-                                 await _bloc.pin(snapshot.data.stationId, false);
-                                },
+                    return !snapshot.hasData ||
+                            (snapshot.data == ArrivalUI.noArrival)
+                        ? Container()
+                        : Row(
+                            children: <Widget>[
+                              SizedBox(
+                                width: 16,
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(1.0),
-                              child: Icon(Icons.bookmark, size: 14, color: Colors.pinkAccent,),
-                            ),
-                          ],
-                        );
+                              Expanded(
+                                child: Dismissible(
+                                  key: ObjectKey(snapshot.data.stationId),
+                                  child: _ArrivalItemWidget(
+                                      arrival: snapshot.data),
+                                  direction: DismissDirection.endToStart,
+                                  onDismissed: (_) async {
+                                    await _bloc.pin(
+                                        snapshot.data.stationId, false);
+                                  },
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(1.0),
+                                child: Icon(
+                                  Icons.bookmark,
+                                  size: 14,
+                                  color: Colors.pinkAccent,
+                                ),
+                              ),
+                            ],
+                          );
                   },
                 )
               ],
