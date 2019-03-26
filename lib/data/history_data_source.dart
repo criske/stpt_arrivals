@@ -1,5 +1,6 @@
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:stpt_arrivals/data/string_data_source.dart';
 
 abstract class HistoryDataSource {
   Stream<List<String>> streamAll();
@@ -7,15 +8,10 @@ abstract class HistoryDataSource {
   Future<void> addToHistory(String transporterId);
 }
 
-class HistoryDataSourceImpl implements HistoryDataSource {
+class HistoryDataSourceImpl extends ObservableDataSource implements HistoryDataSource {
   static const _historyKey = "HISTORY_KEY";
 
   static final int _maxSize = 5;
-
-  static final Object _triggerEv = Object();
-
-  BehaviorSubject<Object> _trigger = BehaviorSubject<Object>()
-        ..add(_triggerEv);
 
   @override
   Future<void> addToHistory(String transporterId) async {
@@ -29,12 +25,12 @@ class HistoryDataSourceImpl implements HistoryDataSource {
     }
     history.add(transporterId);
     await prefs.setStringList(_historyKey, history);
-    _trigger.add(_triggerEv);
+    notifyTrigger();
   }
 
   @override
   Stream<List<String>> streamAll() {
-    return _trigger.switchMap((_) =>
+    return triggerSource.switchMap((_) =>
         Observable.fromFuture(_getAll()).map((l) {
           return l.reversed.toList();
         }));

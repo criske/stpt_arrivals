@@ -16,6 +16,7 @@ class ApplicationStateBloc {
 
   ApplicationStateBloc(
       this.coolDownManager, this.timeProvider, this.transportersRepository);
+
   Stream<CoolDownUI> remainingCoolDownStream() =>
       Observable(coolDownManager.streamLastCoolDown())
           .switchMap((cd) => Observable.fromFuture(

@@ -1,5 +1,6 @@
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:stpt_arrivals/data/string_data_source.dart';
 
 abstract class CoolDownDataSource {
   Stream<CoolDownData> streamLastCoolDown([String transporterId = ""]);
@@ -9,7 +10,7 @@ abstract class CoolDownDataSource {
   Future<void> retainLastCoolDown(CoolDownData data);
 }
 
-class CoolDownDataSourceImpl implements CoolDownDataSource {
+class CoolDownDataSourceImpl extends ObservableDataSource implements CoolDownDataSource {
   //static const _restoringCoolDownKey = "RESTORING_COOLDOWN_KEY";
   static const _restoringCoolDownKey = "RESTORING_COOLDOWN_LIST_KEY";
 

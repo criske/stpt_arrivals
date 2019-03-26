@@ -64,7 +64,8 @@ class ApplicationStateWidget extends StatefulWidget {
   }
 }
 
-class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
+class _ApplicationStateWidgetState extends State<ApplicationStateWidget>
+    with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey();
 
   @override
@@ -115,7 +116,9 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
                 stream: widget.bloc.remainingCoolDownStream(),
                 initialData: CoolDownUI.noCoolDown,
                 builder: (context, snapshot) {
-                  return (snapshot.hasData || snapshot.data != CoolDownUI.noCoolDown)
+                  return (snapshot.connectionState == ConnectionState.active ||
+                          snapshot.hasData ||
+                          snapshot.data != CoolDownUI.noCoolDown)
                       ? CoolDownWidget(
                           label: snapshot.data.transporterName,
                           remaining: snapshot.data.percent,
@@ -128,7 +131,21 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      widget.bloc.switchLastCoolDown();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.bloc.dispose();
     super.dispose();
   }

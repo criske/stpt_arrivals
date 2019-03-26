@@ -11,7 +11,7 @@ class Arrival {
   final Time time;
 
   final Time time2;
-  
+
   const Arrival(this.station, this.time, [this.time2]);
 
   @override
@@ -26,7 +26,6 @@ class Arrival {
 
   @override
   String toString() => "Arrival:[station: $station, time1:$time, time2:$time2]";
-
 }
 
 @immutable
@@ -84,11 +83,16 @@ class Station {
 
   @override
   bool operator ==(other) =>
-      other is Station && this.id == other.id && this.name == other.name && pinned == other.pinned;
+      other is Station &&
+      this.id == other.id &&
+      this.name == other.name &&
+      pinned == other.pinned;
 
   @override
   String toString() => "Station:[id:$id, name:$name, pinned:$pinned]";
 
   static String createID(String transporterId, int genId) =>
       "$transporterId:$genId";
+
+  static String extractTransporterId(String stationId) => stationId.split(":")[0];
 }

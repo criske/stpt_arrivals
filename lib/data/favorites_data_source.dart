@@ -1,4 +1,4 @@
-import 'package:stpt_arrivals/data/simple_string_data_source.dart';
+import 'package:stpt_arrivals/data/string_data_source.dart';
 
 abstract class FavoritesDataSource extends StringDataSource {}
 

@@ -112,9 +112,10 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                 ),
                 StreamBuilder<ArrivalUI>(
                   stream: _bloc.pinnedStream,
-                  initialData: ArrivalUI.noArrival,
-                  builder: (context, snapshot) => snapshot.data ==
-                          ArrivalUI.noArrival
+                  //initialData: ArrivalUI.noArrival,
+                  builder: (context, snapshot) {
+                    return !snapshot.hasData || (snapshot.data ==
+                          ArrivalUI.noArrival)
                       ? Container()
                       : Row(
                           children: <Widget>[
@@ -125,7 +126,7 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                                 child: _ArrivalItemWidget(arrival: snapshot.data),
                                 direction: DismissDirection.endToStart,
                                 onDismissed: (_) async {
-                                  _bloc.pin(snapshot.data.stationId, false);
+                                 await _bloc.pin(snapshot.data.stationId, false);
                                 },
                               ),
                             ),
@@ -134,7 +135,8 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
                               child: Icon(Icons.bookmark, size: 14, color: Colors.pinkAccent,),
                             ),
                           ],
-                        ),
+                        );
+                  },
                 )
               ],
             ),
@@ -163,12 +165,6 @@ class _ArrivalDisplayScreenState extends State<ArrivalDisplayScreen> {
             : null,
       ));
     });
-  }
-
-  @override
-  void deactivate() {
-    super.deactivate();
-    _bloc.dispose();
   }
 
   @override
@@ -206,7 +202,9 @@ class _ArrivalListView extends StatelessWidget {
                           itemBuilder: (context, position) {
                             var arrival = arrivals.elementAt(position);
                             return InkWell(
-                              onTap: () => bloc.pin(arrival.stationId),
+                              onTap: () async {
+                                await bloc.pin(arrival.stationId);
+                              },
                               child: new _ArrivalItemWidget(arrival: arrival),
                             );
                           }),
