@@ -297,7 +297,7 @@ class _TransporterWidget extends StatelessWidget {
                 padding: EdgeInsets.all(2),
                 icon: Icon(
                     transporter.isFavorite ? Icons.star : Icons.star_border,
-                    color: Theme.of(context).accentColor),
+                    color: transporter.isFavorite ? Theme.of(context).accentColor : Colors.grey[300]),
                 onPressed: () {
                   onFavorite(transporter.toggleFavorite());
                 },

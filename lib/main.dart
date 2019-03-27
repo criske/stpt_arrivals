@@ -6,7 +6,7 @@ import 'package:stpt_arrivals/ui/draggable_widget.dart';
 void main() {
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       systemNavigationBarColor: Colors.grey[300], // navigation bar color
-      statusBarColor: Colors.grey[300],
+      statusBarColor: Colors.grey[400],
       statusBarIconBrightness: Brightness.light,
       statusBarBrightness: Brightness.light));
   runApp(new MyApp());
@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
             primarySwatch: Colors.amber, brightness: Brightness.light),
         debugShowCheckedModeBanner: false,
         home: ApplicationStateWidget());
-        //home: TestDraggableWidget());
+       //  home: TestDraggableWidget());
   }
 }
 
@@ -30,22 +30,22 @@ class TestDraggableWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Container(
-          width: 300,
-          height: 500,
+          width: 200,
+          height: 200,
           color: Colors.white,
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
              final rect = (Offset.zero & Size(constraints.maxWidth,
                       constraints.maxHeight));
-
-             final start = Alignment.center.withinRect(rect);
              return Stack(
                 children: [
-                  DraggableWidget.simple(Container(
-                    width: 50,
-                    height: 50,
-                    color: Colors.grey,
-                  ), start, rect)
+                  DraggableWidget(
+                    child: Container(color: Colors.grey,),
+                    draggableWidgetSize: Size(50,50),
+                    draggingBounds: rect,
+                    alignment: Alignment.bottomRight,
+                    padding: EdgeInsets.all(16),
+                  )
                 ],
               );
             },

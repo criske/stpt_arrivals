@@ -77,7 +77,6 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget>
       }, child: Scaffold(body: LayoutBuilder(builder: (ctx, c) {
         final screenSize = MediaQuery.of(ctx).size;
         final rect = (Offset.zero & screenSize);
-        final start = Offset(150, 300);
         return Stack(children: [
           SafeArea(
             child: Navigator(
@@ -103,7 +102,13 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget>
               },
             ),
           ),
-          DraggableWidget.simple(_buildCoolDownWidget(), start, rect)
+          DraggableWidget(
+              child: _buildCoolDownWidget(),
+              //todo align manual?
+              alignment: Alignment(-0.2, 1.0),
+              draggingBounds: rect,
+              draggableWidgetSize: Size(75, 75),
+          )
         ]);
       })));
 
