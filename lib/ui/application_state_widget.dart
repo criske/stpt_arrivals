@@ -105,7 +105,7 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget>
           DraggableWidget(
               child: _buildCoolDownWidget(),
               //todo align manual?
-              alignment: Alignment(-0.2, 1.0),
+              alignment: Alignment(-0.2, 1.0),//bottom-center ish
               draggingBounds: rect,
               draggableWidgetSize: Size(75, 75),
           )
@@ -140,7 +140,7 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      //refresh the cool-down widget to fix the visual glitch
+      //refresh the cool-down widget to fix the visual glitch when the cool-down time has ended, by force repaint
       setState(() {});
     }
   }

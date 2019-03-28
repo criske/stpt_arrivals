@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 
-class DraggableWidget extends StatefulWidget {
+class DraggableWidget extends StatefulWidget{
   final Widget child;
   final Rect draggingBounds;
   final Size draggableWidgetSize;
@@ -23,14 +23,23 @@ class DraggableWidget extends StatefulWidget {
 }
 
 //todo need to work about screen orientation
-class _DraggableWidgetState extends State<DraggableWidget> {
+class _DraggableWidgetState extends State<DraggableWidget>  with WidgetsBindingObserver {
   Offset offset;
+
+  Rect draggingBounds;
+
+  int _metrixChanged = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    draggingBounds = widget.draggingBounds;
+    _initOffset();
+  }
 
-    offset = widget.alignment.withinRect(widget.draggingBounds);
+  void _initOffset() {
+    offset = widget.alignment.withinRect(draggingBounds);
     //center the offset around the alignment point
     offset = offset +
         Offset(max(0, -widget.draggableWidgetSize.width / 2),
@@ -39,20 +48,20 @@ class _DraggableWidgetState extends State<DraggableWidget> {
     offset = offset.translate(widget.padding.left, widget.padding.top);
 
     if (offset.dy + widget.draggableWidgetSize.height >
-        widget.draggingBounds.height) {
+        draggingBounds.height) {
       offset = Offset(
           offset.dx,
-          widget.draggingBounds.height -
+          draggingBounds.height -
               ((offset.dy + widget.draggableWidgetSize.height) -
-                  widget.draggingBounds.height ));
+                  draggingBounds.height ));
     }
 
     if (offset.dx + widget.draggableWidgetSize.width >
-        widget.draggingBounds.width) {
+        draggingBounds.width) {
       offset = Offset(
-          widget.draggingBounds.width -
+          draggingBounds.width -
               ((offset.dx + widget.draggableWidgetSize.width) -
-                  widget.draggingBounds.width),
+                  draggingBounds.width),
           offset.dy);
     }
   }
@@ -81,4 +90,26 @@ class _DraggableWidgetState extends State<DraggableWidget> {
           ),
         ));
   }
+
+
+  @override
+  void didChangeMetrics() {
+    //todo dunno why didChangeMetrics is called twice - so I needed to do a hack in order to swap draggable's rect size once
+    if(_metrixChanged++ % 2 == 0) {
+      setState(() {
+        draggingBounds = Rect.fromLTWH(
+            draggingBounds.left, draggingBounds.top, draggingBounds.height,
+            draggingBounds.width);
+        _initOffset();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+
 }
