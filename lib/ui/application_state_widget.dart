@@ -140,7 +140,8 @@ class _ApplicationStateWidgetState extends State<ApplicationStateWidget>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      widget.bloc.switchLastCoolDown();
+      //refresh the cool-down widget to fix the visual glitch
+      setState(() {});
     }
   }
 
