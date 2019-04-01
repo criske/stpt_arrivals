@@ -154,6 +154,10 @@ class _TransportersScreenState extends State<TransportersScreen> {
                 }),
           ),
         ),
+        IconButton(
+          onPressed: ()=> _bloc.refresh(),
+          icon: Icon(Icons.cloud_download),
+        ),
         Container(
           child: StreamBuilder<List<Transporter>>(
               //Note: if not broadcast I'm getting error :"Bad state: Stream has already been listened to."

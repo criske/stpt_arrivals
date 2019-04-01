@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:stpt_arrivals/data/favorites_data_source.dart';
 import 'package:stpt_arrivals/data/history_data_source.dart';
@@ -24,6 +25,8 @@ abstract class TransportersRepository {
   Future<void> save(List<Transporter> transporters);
 
   Future<void> update(Transporter transporter);
+
+  void refresh();
 }
 
 class TransportersRepositoryImpl implements TransportersRepository {
@@ -37,6 +40,9 @@ class TransportersRepositoryImpl implements TransportersRepository {
 
   TransportersTypeFetcher _transportersTypeFetcher;
 
+  PublishSubject<List<Transporter>> _refreshSubject =
+      PublishSubject<List<Transporter>>();
+
   TransportersRepositoryImpl(
       this._favoritesDataSource,
       this._transportersDataSource,
@@ -44,29 +50,38 @@ class TransportersRepositoryImpl implements TransportersRepository {
       this._hitDataSource,
       this._transportersTypeFetcher);
 
+
+  var count = 0;
+
   @override
   Stream<List<Transporter>> streamAll() {
-    return Observable.combineLatest([
-      Observable(_transportersDataSource.streamAll()),
-      Observable(_favoritesDataSource.streamAll()),
-      Observable(_hitDataSource.streamAll())
-    ], (sources) {
-      final transporters = sources[0] as List<Transporter>;
-      if (transporters.isEmpty) {
-        return transporters;
-      } else {
-        final favIds = sources[1] as Set<String>;
-        final transportersWithFav = List<Transporter>();
-        transporters.forEach((t) {
-          transportersWithFav.add(favIds.contains(t.id) ? t.favorite(true) : t);
-        });
-        final hitIds = sources[2] as Set<Hit>;
-        return _sortByHits(transportersWithFav, hitIds);
-      }
-    }).switchMap((transporters) {
+    return Observable.merge([
+      _refreshSubject,
+      Observable.combineLatest([
+        Observable(_transportersDataSource.streamAll()),
+        Observable(_favoritesDataSource.streamAll()),
+        Observable(_hitDataSource.streamAll())
+      ], (sources) {
+        final transporters = sources[0] as List<Transporter>;
+        if (transporters.isEmpty) {
+          return transporters;
+        } else {
+          final favIds = sources[1] as Set<String>;
+          final transportersWithFav = <Transporter>[];
+          transporters.forEach((t) {
+            transportersWithFav
+                .add(favIds.contains(t.id) ? t.favorite(true) : t);
+          });
+          final hitIds = sources[2] as Set<Hit>;
+          return _sortByHits(transportersWithFav, hitIds);
+        }
+      })
+    ]).switchMap((transporters) {
+      print("Swith transporters ${count++}");
       if (transporters.isEmpty) {
         return Observable.fromFuture(_getAllRemote())
             .doOnData((remoteTransporters) async {
+          print("Swith transporters remote");
           _transportersDataSource.save(remoteTransporters);
         });
       } else {
@@ -160,4 +175,9 @@ class TransportersRepositoryImpl implements TransportersRepository {
   @override
   Future<Transporter> findById(String transporterId) async =>
       _transportersDataSource.findById(transporterId);
+
+  @override
+  void refresh() {
+    _refreshSubject.add([]);
+  }
 }

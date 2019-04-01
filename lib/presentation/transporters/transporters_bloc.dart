@@ -22,6 +22,8 @@ abstract class TransportersBloc implements DisposableBloc {
   void showBy(TransporterBlocFilter type, [dynamic extras = null]);
 
   void update(Transporter transporter);
+
+  void refresh();
 }
 
 enum TransporterBlocFilter {
@@ -219,6 +221,11 @@ class TransportersBlocImpl implements TransportersBloc {
 
   @override
   Stream<List<Transporter>> get historyStream => _repository.streamHistory();
+
+  @override
+  void refresh() {
+    _repository.refresh();
+  }
 }
 
 TransporterBlocFilter _typeToFilter(TransporterType type) {
